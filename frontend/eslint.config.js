@@ -3,6 +3,9 @@ import globals from 'globals'
 import pluginVue from 'eslint-plugin-vue'
 import pluginQuasar from '@quasar/app-vite/eslint'
 import prettierSkipFormatting from '@vue/eslint-config-prettier/skip-formatting'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import tsParser from '@typescript-eslint/parser'
+import vueParser from 'vue-eslint-parser'
 
 export default [
   {
@@ -33,6 +36,30 @@ export default [
    *   -> Above, plus rules to enforce subjective community defaults to ensure consistency.
    */
   ...pluginVue.configs['flat/essential'],
+
+  {
+    // Enable TypeScript inside .vue SFCs and .ts files
+    files: ['**/*.ts', '**/*.tsx', '**/*.vue'],
+    languageOptions: {
+      // Use Vue parser for SFC and delegate <script> to TS parser
+      parser: vueParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        extraFileExtensions: ['.vue']
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin
+    },
+    rules: {
+      // Recommended TS rules
+      ...tsPlugin.configs.recommended.rules,
+      // Avoid false positives in <script setup>
+      'no-undef': 'off'
+    }
+  },
 
   {
     languageOptions: {
