@@ -1,0 +1,56 @@
+### Maven ###
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### Logs and temp files ###
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+
+### Spring Boot ###
+# Игнорируем встроенные файлы IDE и окружения
+*.env
+*.local
+*.dev
+*.test
+*.prod
+
+### System ###
+Thumbs.db
+ehthumbs.db
+
+### Optional: если используешь docker-compose для dev ###
+/docker-compose.override.yml
+/docker-compose.dev.yml
+
+### VS Code ###
+.vscode/
+
+### NetBeans (если кто-то случайно откроет проект там) ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### MacOS ###
+.DS_Store
+.AppleDouble
+.LSOverride

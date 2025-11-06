@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_current_department
+      author: borislarionov
+      changes:
+        - createView:
+            viewName: device_current_department
+            replaceIfExists: true
+            selectQuery: |
+              SELECT DISTINCT ON (dd.device_id)
+                      dd.device_id,
+                      dd.department_id,
+                      dd.assigned_at
+              FROM device_departments dd
+              ORDER BY dd.device_id, dd.assigned_at DESC

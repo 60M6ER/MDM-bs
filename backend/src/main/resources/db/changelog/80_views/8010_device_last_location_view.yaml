@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_last_location_view
+      author: borislarionov
+      changes:
+        - createView:
+            viewName: device_last_location
+            replaceIfExists: true
+            selectQuery: |
+              SELECT DISTINCT ON (dl.device_id)
+                      dl.device_id, dl.ts, dl.received_at, dl.lat, dl.lon,
+                      dl.accuracy_m, dl.altitude_m, dl.speed_mps, dl.heading_deg,
+                      dl.source, dl.is_mock
+              FROM device_locations dl
+              ORDER BY dl.device_id, dl.ts DESC

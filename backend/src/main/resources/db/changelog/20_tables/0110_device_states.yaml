@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_states-
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_state
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: timestamp
+              - column:
+                  name: is_online
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: is_charging
+                  type: boolean
+              - column:
+                  name: battery_level
+                  type: smallint           # 0..100
+              - column:
+                  name: os_version
+                  type: text
+              - column:
+                  name: app_version
+                  type: text
+              - column:
+                  name: network_type
+                  type: text              # wifi/mobile/ethernet
+              - column:
+                  name: wifi_ssid
+                  type: text
+              - column:
+                  name: ip_address
+                  type: text
+              - column:
+                  name: storage_total_mb
+                  type: bigint
+              - column:
+                  name: storage_free_mb
+                  type: bigint
+              - column:
+                  name: cpu_temp_c
+                  type: double precision
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: NOW()
+
+        - addForeignKeyConstraint:
+            baseTableName: device_state
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_device_state_device
+            onDelete: CASCADE

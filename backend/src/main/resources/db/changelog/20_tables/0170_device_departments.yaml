@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_departments
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_departments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: department_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assigned_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: device_departments
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_device_departments_device
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: device_departments
+            baseColumnNames: department_id
+            referencedTableName: departments
+            referencedColumnNames: id
+            constraintName: fk_device_departments_department
+            onDelete: CASCADE
+
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_dd_device_time_desc
+              ON device_departments (device_id, assigned_at DESC);
+
+        - createIndex:
+            tableName: device_departments
+            indexName: idx_dd_department_time
+            columns:
+              - column: { name: department_id }
+              - column: { name: assigned_at }
+
+        - sql:
+            sql: |
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_dd_device_time_dept
+              ON device_departments (device_id, assigned_at, department_id);

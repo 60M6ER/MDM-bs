@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: departments0
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: departments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parent_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: external_id
+                  type: text
+                  constraints:
+                    nullable: true
+
+        - addForeignKeyConstraint:
+            baseTableName: departments
+            baseColumnNames: parent_id
+            referencedTableName: departments
+            referencedColumnNames: id
+            constraintName: fk_departments_parent
+            onDelete: SET NULL
+
+        - sql:
+            sql: |
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_departments_external_id
+              ON departments (external_id)
+              WHERE external_id IS NOT NULL;
+
+        - createIndex:
+            tableName: departments
+            indexName: idx_departments_parent
+            columns:
+              - column: { name: parent_id }
+
+        - createIndex:
+            tableName: departments
+            indexName: idx_departments_parent_name
+            columns:
+              - column: { name: parent_id }
+              - column: { name: name }
+
+        # Защита от самоссылки
+        - sql:
+            sql: |
+              ALTER TABLE departments
+              ADD CONSTRAINT chk_departments_not_self_parent
+              CHECK (id IS NULL OR parent_id IS NULL OR id <> parent_id);

@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mdm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mdm
+      POSTGRES_USER: mdm
+      POSTGRES_PASSWORD: mdm
+      TZ: Europe/Moscow
+    ports:
+      - "5444:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

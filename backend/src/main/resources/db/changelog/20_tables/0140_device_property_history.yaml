@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_property_history
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_property_history
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints: { nullable: false }
+              - column:
+                  name: key
+                  type: varchar(200)
+                  constraints: { nullable: false }
+              - column:
+                  name: value
+                  type: jsonb
+                  constraints: { nullable: false }
+              - column: { name: changed_at, type: timestamp, defaultValueComputed: now() }
+              - column: { name: source,     type: text,        defaultValue: device }  # device/server/agent
+        - addForeignKeyConstraint:
+            baseTableName: device_property_history
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_dph_device
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: device_property_history
+            indexName: idx_dph_device_key_time
+            columns:
+              - column: { name: device_id }
+              - column: { name: key }
+              - column: { name: changed_at }
+
+        - createIndex:
+            tableName: device_property_history
+            indexName: idx_dph_value_gin
+            columns:
+              - column: { name: value, type: jsonb }

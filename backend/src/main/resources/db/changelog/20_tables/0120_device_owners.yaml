@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_owners0
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_owners
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner_display
+                  type: text
+                  constraints:
+                    nullable: true # строковое представление владельца (логин / имя / email)
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: true # ссылка на пользователя в таблице users
+              - column:
+                  name: assigned_at
+                  type: timestamp
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false # дата назначения владельца
+
+        - addForeignKeyConstraint:
+            baseTableName: device_owners
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_device_owners_device
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: device_owners
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_device_owners_user
+            onDelete: SET NULL
+
+        - createIndex:
+            tableName: device_owners
+            indexName: idx_device_owners_device_date
+            columns:
+              - column: { name: device_id }
+              - column: { name: assigned_at }
+
+        - createIndex:
+            tableName: device_owners
+            indexName: idx_device_owners_user
+            columns:
+              - column: { name: user_id }
+
+        - sql:
+            sql: |
+              ALTER TABLE device_owners
+              ADD CONSTRAINT chk_device_owner_nonempty
+              CHECK (
+                owner_display IS NOT NULL OR user_id IS NOT NULL
+              );

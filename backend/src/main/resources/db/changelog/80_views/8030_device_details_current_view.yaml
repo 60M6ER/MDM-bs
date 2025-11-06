@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_details_current0
+      author: borislarionov
+      changes:
+        - createView:
+            viewName: device_details_current
+            replaceIfExists: true
+            selectQuery: |
+              SELECT
+                d.id                            AS device_id,
+                d.device_name                   AS device_name,
+                d.serial_number                 AS serial_number,
+                d.inventory_number              AS inventory_number,
+                d.status                        AS status,
+                d.model                         AS model,
+                d.manufacturer                  AS manufacturer,
+                d.enrolled_at                   AS enrolled_at,
+                d.deactivated_at                AS deactivated_at,
+                d.created_at                    AS device_created_at,
+                d.updated_at                    AS device_updated_at,
+                -- state (текущая оперативка)
+                s.last_seen_at                  AS state_last_seen_at,
+                s.updated_at                    AS state_updated_at,
+                s.is_online                     AS is_online,
+                s.is_charging                   AS is_charging,
+                s.battery_level                 AS battery_level,
+                s.os_version                    AS os_version,
+                s.app_version                   AS app_version,
+                s.network_type                  AS network_type,
+                s.wifi_ssid                     AS wifi_ssid,
+                s.ip_address                    AS ip_address,
+                s.storage_total_mb              AS storage_total_mb,
+                s.storage_free_mb               AS storage_free_mb,
+                s.cpu_temp_c                    AS cpu_temp_c,
+
+                -- current owner (вью)
+                co.owner_display                AS owner_display,
+                co.user_id                      AS owner_user_id,
+                co.assigned_at                  AS owner_assigned_at,
+
+                -- last location (вью)
+                ll.lat                          AS lat,
+                ll.lon                          AS lon,
+                ll.accuracy_m                   AS accuracy_m,
+                ll.altitude_m                   AS altitude_m,
+                ll.speed_mps                    AS speed_mps,
+                ll.heading_deg                  AS heading_deg,
+                ll.source                       AS location_source,
+                ll.is_mock                      AS location_is_mock,
+                ll.ts                           AS location_ts,
+                ll.received_at                  AS location_received_at,
+
+                -- current department (вью)
+                cd.department_id                AS department_id,
+                cd.assigned_at                  AS department_assigned_at
+
+              FROM devices d
+              LEFT JOIN device_state s
+                        ON s.device_id = d.id
+              LEFT JOIN device_current_owner co
+                        ON co.device_id = d.id
+              LEFT JOIN device_last_location ll
+                        ON ll.device_id = d.id
+              LEFT JOIN device_current_department cd
+                        ON cd.device_id = d.id;

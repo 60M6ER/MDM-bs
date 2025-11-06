@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - includeAll:
+      path: 20_tables
+      relativeToChangelogFile: true
+  - includeAll:
+      path: 80_views
+      relativeToChangelogFile: true

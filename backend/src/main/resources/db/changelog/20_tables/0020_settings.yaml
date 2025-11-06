@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: settings
+            columns:
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: value
+                  type: jsonb
+                  defaultValue: '{}'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: int
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false

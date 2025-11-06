@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5444/mdm   # если compose проброшен на 5432
+    username: mdm
+    password: mdm
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    show-sql: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+management:
+  health:
+    ldap:
+      enabled: false
+server:
+  port: 8080
+springdoc:
+  swagger-ui:
+    path: /api-docs
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.springframework:
+      web: INFO
+      security: DEBUG
+    org.hibernate.SQL: DEBUG
+security:
+  jwt:
+    secret: security:W2s7hQz!9Yp#eU4RjVm1^fZn8Lr3TxAo
+    ttl-seconds: 3600
+    issuer: mdm-backend
+app:
+  admin:
+    username: Administrator
+    password: ${APP_ADMIN_PASSWORD:admin}

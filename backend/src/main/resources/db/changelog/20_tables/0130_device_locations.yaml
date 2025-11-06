@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_locations
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_locations
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints: { nullable: false }
+              - column:
+                  name: ts
+                  type: timestamp
+                  constraints: { nullable: false }         # время на устройстве/сенсоре
+              - column: { name: received_at, type: timestamp, defaultValueComputed: now() }
+              - column:
+                  name: lat
+                  type: double precision
+                  constraints: { nullable: false }
+              - column:
+                  name: lon
+                  type: double precision
+                  constraints: { nullable: false }
+              - column: { name: accuracy_m,  type: double precision }
+              - column: { name: altitude_m,  type: double precision }
+              - column: { name: speed_mps,   type: double precision }
+              - column: { name: heading_deg, type: double precision }
+              - column:
+                  name: source
+                  type: text
+                  defaultValue: unknown      # gps/network/fused/manual/unknown
+              - column: { name: is_mock,     type: boolean, defaultValueBoolean: false }
+
+        - addForeignKeyConstraint:
+            baseTableName: device_locations
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_device_locations_device
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: device_locations
+            indexName: idx_dl_device_ts
+            columns:
+              - column: { name: device_id }
+              - column: { name: ts }

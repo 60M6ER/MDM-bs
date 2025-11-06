@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_events0
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: device_events
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: device_id
+                  type: uuid
+                  constraints: { nullable: false }
+              - column:
+                  name: event
+                  type: varchar(200)
+                  constraints: { nullable: false }  # enum в Java, строка в БД
+              - column:
+                  name: occurred_at
+                  type: timestamp
+                  constraints: { nullable: false }
+
+        - addForeignKeyConstraint:
+            baseTableName: device_events
+            baseColumnNames: device_id
+            referencedTableName: devices
+            referencedColumnNames: id
+            constraintName: fk_device_events_device
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: device_events
+            indexName: idx_device_events_device_time
+            columns:
+              - column: { name: device_id }
+              - column: { name: occurred_at }

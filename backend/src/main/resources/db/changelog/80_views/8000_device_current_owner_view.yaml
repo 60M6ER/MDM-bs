@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_current_owner0
+      author: borislarionov
+      changes:
+        - createView:
+            viewName: device_current_owner
+            replaceIfExists: true
+            selectQuery: |
+              SELECT DISTINCT ON (o.device_id)
+                     o.device_id,
+                     o.owner_display,
+                     o.user_id,
+                     o.assigned_at
+              FROM device_owners o
+              ORDER BY o.device_id, o.assigned_at DESC;

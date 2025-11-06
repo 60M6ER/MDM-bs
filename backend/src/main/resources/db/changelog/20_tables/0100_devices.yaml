@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: devices0
+      author: borislarionov
+      changes:
+        - createTable:
+            tableName: devices
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints: { primaryKey: true, nullable: false }
+              - column: { name: serial_number,  type: text }
+              - column: { name: model,          type: text }
+              - column: { name: manufacturer,   type: text }
+              - column: { name: device_name,    type: text }
+              - column:
+                  name: inventory_number
+                  type: text
+              - column:
+                  name: status
+                  type: text
+                  constraints: { nullable: false }
+              - column: { name: enrolled_at,    type: timestamp }
+              - column:
+                  name: deactivated_at
+                  type: timestamp
+              - column: { name: created_at,     type: timestamp, defaultValueComputed: now() }
+              - column: { name: updated_at,     type: timestamp, defaultValueComputed: now() }
+
+        - createIndex:
+            tableName: devices
+            indexName: idx_devices_status
+            columns:
+              - column:
+                  name: status
+
+        - createIndex:
+            tableName: devices
+            indexName: idx_devices_serial_number
+            columns:
+              - column:
+                  name: serial_number
+
+        - createIndex:
+            tableName: devices
+            indexName: idx_devices_manufacturer_model
+            columns:
+              - column:
+                  name: manufacturer
+              - column:
+                  name: model
