@@ -1,5 +1,6 @@
 import { defineStore } from '#q-app/wrappers'
 import { createPinia } from 'pinia'
+import piniaPersist from 'pinia-plugin-persistedstate'
 
 /*
  * If not building with SSR mode, you can
@@ -10,34 +11,18 @@ import { createPinia } from 'pinia'
  * with the Store instance.
  */
 
-export default defineStore((/* { ssrContext } */) => {
+export default defineStore(async (/* { ssrContext } */) => {
   const pinia = createPinia()
 
-  pinia.use(({ store }) => {
-    const key = `app:${store.$id}`
+  pinia.use(piniaPersist)
 
-    // восстановление
-    try {
-      const saved = localStorage.getItem(key)
-      if (saved) store.$patch(JSON.parse(saved))
-    } catch (err) {
-      console.warn('[pinia-persist] restore failed', err)
-    }
-
-    // сохранение
-    store.$subscribe((_mutation, state) => {
-      let toSave = state
-      if (store.$id === 'auth') {
-        toSave = { token: state.token, user: state.user ?? null }
-      }
-      try {
-        localStorage.setItem(key, JSON.stringify(toSave))
-      } catch (err) {
-        console.warn('[pinia-persist] persist failed', err)
-      }
-    })
-  })
-
+  try {
+    const { useAuthStore } = await import('src/stores/auth')
+    const auth = useAuthStore(pinia)
+    if (auth?.initFromPersist) auth.initFromPersist()
+  } catch {
+    // optional: keep silent in case auth store is not yet defined
+  }
 
   return pinia
 })

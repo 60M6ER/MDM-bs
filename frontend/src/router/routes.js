@@ -3,10 +3,15 @@ const routes = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/IndexPage.vue') },
+      {
+        path: '',
+        component: () => import('pages/IndexPage.vue'),
+        meta: {requiresAuth: true}
+      },
       {
         path: '/settings',
         component: () => import('pages/settings/SettingsLayout.vue'),
+        meta: {requiresAuth: true},
         children: [
           { path: '', redirect: '/settings/app' },
           { path: 'app', component: () => import('pages/settings/AppSettingsPage.vue') },
@@ -22,6 +27,7 @@ const routes = [
 
   {
     path: '/login',
+    name: 'login',
     component: () => import('pages/LoginPage.vue'),
   },
 

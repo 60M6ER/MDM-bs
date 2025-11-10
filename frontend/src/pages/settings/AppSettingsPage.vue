@@ -44,6 +44,15 @@
           </div>
         </div>
 
+        <!-- AD settings -->
+        <div v-if="model.provider === 'AD'" class="q-gutter-md">
+          <div class="text-subtitle2">Active Directory (AD)</div>
+          <q-banner dense class="bg-grey-2 text-grey-9">Укажите домен и контроллеры домена. Сервера можно перечислить через запятую или по одному в строке.</q-banner>
+          <q-input v-model="model.ad.domain" label="Домен (например, example.local)" outlined dense />
+          <q-input v-model="adUrlsText" type="textarea" autogrow label="Серверы/URL контроллеров (через запятую или с новой строки)" outlined dense />
+          <q-input v-model="model.ad.referral" label="Referral (например, follow/ignore)" outlined dense />
+        </div>
+
         <!-- OIDC settings -->
         <div v-if="model.provider === 'OIDC'" class="q-gutter-md">
           <div class="text-subtitle2">OpenID Connect (OIDC)</div>
@@ -101,9 +110,16 @@ interface OidcSettings {
   rolesClaim: string
 }
 
+interface AdSettings {
+  domain: string
+  urls: string[]
+  referral: string
+}
+
 interface ExternalAuthSettings {
   enabled: boolean
-  provider: 'LDAP' | 'OIDC'
+  provider: 'LDAP' | 'OIDC' | 'AD'
+  ad: AdSettings
   ldap: LdapSettings
   oidc: OidcSettings
 }
@@ -117,6 +133,7 @@ const statusMsg = ref<string | null>(null)
 const statusType = ref<'positive' | 'negative' | 'warning' | 'info'>('info')
 
 const providerOptions = [
+  { label: 'Active Directory (AD)', value: 'AD' },
   { label: 'LDAP / Active Directory', value: 'LDAP' },
   { label: 'OpenID Connect (OIDC)', value: 'OIDC' }
 ]
@@ -124,6 +141,11 @@ const providerOptions = [
 const model = reactive<ExternalAuthSettings>({
   enabled: false,
   provider: 'LDAP',
+  ad: {
+    domain: '',
+    urls: [],
+    referral: ''
+  },
   ldap: {
     url: '',
     baseDn: '',
@@ -146,7 +168,23 @@ const model = reactive<ExternalAuthSettings>({
 
 const oidcScopes = ref(model.oidc.scopes.join(', '))
 watch(oidcScopes, (v) => {
+  if (!model.oidc) {
+    model.oidc = {
+      issuerUri: '',
+      clientId: '',
+      clientSecret: '',
+      redirectUri: '',
+      scopes: [],
+      usernameClaim: 'preferred_username',
+      rolesClaim: 'realm_access.roles'
+    } as OidcSettings
+  }
   model.oidc.scopes = v.split(',').map(s => s.trim()).filter(Boolean)
+})
+
+const adUrlsText = ref(model.ad.urls.join('\n'))
+watch(adUrlsText, (v) => {
+  model.ad.urls = v.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
 })
 
 function buildPayload() {
@@ -179,9 +217,18 @@ function getErrorMessage(err: unknown): string {
 async function load() {
   loading.value = true
   try {
-    const { data } = await apiClient.get('/settings/external-auth')
-    Object.assign(model, data)
+    const { data } = await apiClient.get('/settings/e-auth')
+    const incoming = data as Partial<ExternalAuthSettings>
+    // верхнеуровневые поля
+    if (typeof incoming.enabled === 'boolean') model.enabled = incoming.enabled
+    if (incoming.provider) model.provider = incoming.provider as ExternalAuthSettings['provider']
+    // вложенные объекты: мержим поверх дефолтов, игнорируя null
+    if (incoming.ad) model.ad = { ...model.ad, ...incoming.ad }
+    if (incoming.ldap) model.ldap = { ...model.ldap, ...incoming.ldap }
+    if (incoming.oidc) model.oidc = { ...model.oidc, ...incoming.oidc }
+
     oidcScopes.value = (model.oidc?.scopes || []).join(', ')
+    adUrlsText.value = (model.ad.urls || []).join('\n')
   } catch {
     statusMsg.value = 'Не удалось загрузить настройки'
     statusType.value = 'warning'
@@ -195,7 +242,7 @@ async function onSave() {
   loading.value = true
   try {
     const payload = buildPayload()
-    await apiClient.put('/settings/external-auth', payload)
+    await apiClient.put('/settings/e-auth', payload)
     statusMsg.value = 'Настройки сохранены'
     statusType.value = 'positive'
     $q.notify({ type: 'positive', message: 'Настройки сохранены' })
@@ -212,7 +259,7 @@ async function onSave() {
 async function onTest() {
   loading.value = true
   try {
-    const { data } = await apiClient.post('/settings/external-auth/test', buildPayload())
+    const { data } = await apiClient.post('/settings/e-auth/test', buildPayload())
     const ok = !!data?.ok
     const msg = data?.message || (ok ? 'Подключение успешно' : 'Проверка не удалась')
     statusMsg.value = msg

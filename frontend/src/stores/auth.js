@@ -2,33 +2,65 @@
 import { defineStore } from 'pinia'
 import { apiClient } from 'src/services/apiClient'
 
+// локальный helper, чтобы не размазывать логику по actions
+const setAuthHeader = (token) => {
+  console.log('[auth] setAuthHeader →', token ? 'Bearer…' : '(clear)')
+  if (token) {
+    apiClient.defaults.headers.common.Authorization = `Bearer ${token}`
+  } else {
+    delete apiClient.defaults.headers.common.Authorization
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: null,
     user: null,         // при необходимости
   }),
-  persist: true,        // pinia-persist
+  getters: {
+    isAuthenticated: (state) => Boolean(state.token),
+  },
+  persist: {
+    paths: ['token', 'user'],
+    storage: localStorage
+  },
   actions: {
+    setToken(token) {
+      this.token = token || null
+      setAuthHeader(this.token)
+    },
+    initFromPersist() {
+      setAuthHeader(this.token)
+    },
     async login(username, password) {
-      const { data } = await apiClient.post('/auth/login', { username, password })
-      // ожидаем унифицированный ответ AuthResponse
-      if (!data?.success) {
+      console.log('[auth] login:start', { username })
+      const {data} = await apiClient.post('/auth/login', {username, password})
+      console.log('[auth] login:resp', data)
+      // допускаем разные варианты контракта
+      const success = data?.success ?? true
+      if (!success) {
         const msg = data?.message || 'Ошибка авторизации'
         const code = data?.code || 'UNKNOWN'
-        throw new Error(`${msg}|${code}`)
+        const err = new Error(msg)
+        err.code = code
+        throw err
       }
-      const token = data?.accessToken
+
+      const token = data?.accessToken ?? data?.token
       if (!token) {
-        throw new Error('Нет accessToken в ответе')
+        const err = new Error('Нет accessToken в ответе')
+        err.code = 'NO_TOKEN'
+        throw err
       }
-      this.token = token
-      // сразу проставим заголовок для текущей сессии axios
-      apiClient.defaults.headers.common.Authorization = `Bearer ${token}`
-      return { message: data.message, code: data.code }
+
+      this.setToken(token)
+      this.user = data?.user ?? null
+      console.log('[auth] login:state', { token: this.token, user: this.user })
+      return {message: data?.message || 'ok', code: data?.code || 'OK'}
     },
     logout() {
-      this.token = null
-      delete apiClient.defaults.headers.common.Authorization
+      console.log('[auth] logout has been asked →')
+      this.setToken(null)
       this.user = null
     }
   }

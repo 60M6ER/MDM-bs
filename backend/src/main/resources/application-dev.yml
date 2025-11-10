@@ -4,6 +4,9 @@ spring:
     username: mdm
     password: mdm
     driver-class-name: org.postgresql.Driver
+  mvc:
+    problemdetails:
+      enabled: true
   jpa:
     hibernate:
       ddl-auto: none
@@ -34,6 +37,8 @@ logging:
     org.springframework:
       web: INFO
       security: DEBUG
+      security.web:
+        FilterChainProxy: DEBUG
     org.hibernate.SQL: DEBUG
 security:
   jwt:

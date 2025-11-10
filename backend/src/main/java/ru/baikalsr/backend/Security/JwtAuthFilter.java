@@ -1,5 +1,6 @@
 package ru.baikalsr.backend.Security;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -74,6 +75,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String p = request.getServletPath();
         // исключаем все пути авторизации, например /api/v_1/auth/**
-        return p.startsWith("/api") && p.contains("/auth/");
+        return request.getDispatcherType() != DispatcherType.REQUEST
+                || !p.startsWith("/api") || p.startsWith("/api") && p.contains("/auth/");
     }
 }

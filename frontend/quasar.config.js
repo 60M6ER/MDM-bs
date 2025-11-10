@@ -14,6 +14,8 @@ export default defineConfig((/* ctx */) => {
     boot: [
       'axios',
       'router-instance',
+      'auth-guard',
+      'auth-watch'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

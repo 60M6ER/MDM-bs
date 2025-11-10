@@ -2,6 +2,7 @@ package ru.baikalsr.backend.Security.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -13,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.DispatcherServlet;
 import ru.baikalsr.backend.Security.DynamicLdapProvider;
 import ru.baikalsr.backend.Security.JwtAuthFilter;
 import ru.baikalsr.backend.User.service.AppUserDetailsService;
@@ -44,9 +46,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(1)
     SecurityFilterChain filterChain(HttpSecurity http,
                                     AuthenticationManager am) throws Exception {
         http
+                .securityMatcher("/api/**")
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -59,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/*/auth/**", "/actuator/health").permitAll()
                         .requestMatchers("/api/v1/health_check").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(
                                 "/api-docs",
                                 "/v3/api-docs/**",
@@ -72,6 +77,15 @@ public class SecurityConfig {
                 .authenticationManager(am)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    SecurityFilterChain uiChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/**")
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll());
         return http.build();
     }
 }

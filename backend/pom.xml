@@ -23,7 +23,7 @@
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
 		<lombok.version>1.18.36</lombok.version>
-		<springdoc.version>2.6.0</springdoc.version>
+		<springdoc.version>2.8.14</springdoc.version>
 		<java-jwt.version>4.4.0</java-jwt.version>
 	</properties>
 
