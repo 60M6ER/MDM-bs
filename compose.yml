@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: mdm-database
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 25
+    networks: [ mdm-net ]
+
+  app:
+    # ЛОКАЛЬНО: строим из исходников (без Docker Hub)
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mdm-backend:local
+    container_name: mdm-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_LIQUIBASE_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
+    ports:
+      - "${APP_PORT}:8080"
+    networks: [ mdm-net ]
+    restart: unless-stopped
+    healthcheck:
+      # 1) проверяем ваш эндпоинт доступности
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/health_check >/dev/null" ]
+      # 2) даём больше времени на первый старт
+      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  db_data:
+
+networks:
+  mdm-net:
+    driver: bridge

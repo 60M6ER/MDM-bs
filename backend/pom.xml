@@ -25,6 +25,7 @@
 		<lombok.version>1.18.36</lombok.version>
 		<springdoc.version>2.8.14</springdoc.version>
 		<java-jwt.version>4.4.0</java-jwt.version>
+        <testcontainers.version>1.20.2</testcontainers.version>
 	</properties>
 
 	<dependencies>
@@ -129,11 +130,102 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
 	</dependencies>
 
 	<build>
 		<plugins>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <workingDirectory>../frontend</workingDirectory>
+                    <installDirectory>${project.build.directory}/node</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node</id>
+                        <goals>
+                            <goal>install-node-and-pnpm</goal>
+                        </goals>
+                        <configuration>
+                            <!-- выравниваемся под твою рабочую версию -->
+                            <nodeVersion>v20.19.5</nodeVersion>
+                            <pnpmVersion>9.12.0</pnpmVersion>
+                        </configuration>
+                    </execution>
+
+                    <!-- pnpm install по lock-файлу -->
+                    <execution>
+                        <id>pnpm-install</id>
+                        <goals>
+                            <goal>pnpm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>install --frozen-lockfile</arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- 1.3 quasar build через pnpm -->
+                    <execution>
+                        <id>quasar-build</id>
+                        <goals>
+                            <goal>pnpm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>quasar build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 2.2 Скопировать сборку SPA в classpath:/static -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-frontend-to-static</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <!-- стандартный выход Quasar SPA: dist/spa -->
+                            <!-- Если SPA отдаём с корня "/" -->
+                            <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <!-- БЕРЁМ ИЗ ФАКТИЧЕСКОГО ФРОНТА -->
+                                    <directory>../frontend/dist/spa</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 			<!-- Компилятор: release 21 + lombok как аннотационный процессор -->
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>

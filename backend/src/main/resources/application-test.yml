@@ -1,0 +1,26 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:16-alpine:///app
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    username: app
+    password: app
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+security:
+  jwt:
+    secret: security:test_security_string_key
+    ttl-seconds: 3600
+    issuer: mdm-backend
+app:
+  admin:
+    username: Administrator
+    password: admin}

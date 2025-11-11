@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.domain.Persistable;
+import ru.baikalsr.backend.Device.enums.DeviceStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,10 +22,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Device {
+public class Device implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue
     @Column(nullable = false)
     private UUID id;
 
@@ -39,8 +40,9 @@ public class Device {
     @Column(name = "device_name")
     private String deviceName;
 
-    @Column
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private DeviceStatus status;
 
     @Column(name = "inventory_number")
     private String inventoryNumber;
@@ -51,6 +53,10 @@ public class Device {
     @Column(name = "deactivated_at")
     private Instant deactivatedAt;
 
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "id", referencedColumnName = "device_id")
+    private DeviceSecret deviceSecret;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
@@ -58,4 +64,24 @@ public class Device {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Transient
+    private boolean _isNew = false;
+
+    @Override
+    public boolean isNew() {
+        // можно завязаться на createdUtc == null, но флаг надёжнее
+        return _isNew;
+    }
+
+    /** Вызывай это перед сохранением нового устройства */
+    public void markNew() {
+        this._isNew = true;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this._isNew = false;
+    }
 }

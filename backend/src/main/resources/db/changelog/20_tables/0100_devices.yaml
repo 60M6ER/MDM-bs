@@ -10,16 +10,16 @@ databaseChangeLog:
                   name: id
                   type: uuid
                   constraints: { primaryKey: true, nullable: false }
-              - column: { name: serial_number,  type: text }
-              - column: { name: model,          type: text }
-              - column: { name: manufacturer,   type: text }
-              - column: { name: device_name,    type: text }
+              - column: { name: serial_number,  type: varchar(255) }
+              - column: { name: model,          type: varchar(255) }
+              - column: { name: manufacturer,   type: varchar(255) }
+              - column: { name: device_name,    type: varchar(255) }
               - column:
                   name: inventory_number
                   type: text
               - column:
                   name: status
-                  type: text
+                  type: varchar(60)
                   constraints: { nullable: false }
               - column: { name: enrolled_at,    type: timestamp }
               - column:

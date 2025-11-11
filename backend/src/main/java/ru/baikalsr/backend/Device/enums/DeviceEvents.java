@@ -10,5 +10,11 @@ public enum DeviceEvents {
     /** Устройство физически упало на пол */
     FALL_DETECTED,
     /** Приложение на устройстве обновлено */
-    APP_UPDATED
+    APP_UPDATED,
+    BOOT_COMPLETED,
+    APP_CRASHED,
+    APP_STARTED,
+    APP_STOPPED,
+    NETWORK_UP,
+    NETWORK_DOWN,
 }
