@@ -1,15 +1,21 @@
 package ru.baikalsr.backend.Device.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import ru.baikalsr.backend.Device.entity.Device;
 import ru.baikalsr.backend.Device.entity.DeviceEvent;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
+import ru.baikalsr.backend.Device.event.DeviceRegisteredEvent;
 import ru.baikalsr.backend.Device.repository.DeviceEventRepository;
+import ru.baikalsr.backend.Setting.event.SettingsChangedEvent;
 
+import java.awt.desktop.AppForegroundListener;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

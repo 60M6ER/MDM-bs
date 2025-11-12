@@ -1,6 +1,7 @@
 package ru.baikalsr.backend.Device.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import ru.baikalsr.backend.Device.dto.*;
 import ru.baikalsr.backend.Device.entity.*;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
 import ru.baikalsr.backend.Device.enums.DeviceStatus;
+import ru.baikalsr.backend.Device.event.DeviceRegisteredEvent;
 import ru.baikalsr.backend.Device.mapper.DeviceDetailsMapper;
 import ru.baikalsr.backend.Device.repository.*;
 
@@ -31,7 +33,7 @@ public class DeviceService {
     private final DeviceSecretRepository deviceSecretRepository;
     private final PreprovisionCache preprovisionCache;
     private final PasswordEncoder passwordEncoder;
-    private final DeviceEventService deviceEventService;
+    private final DeviceEventRepository deviceEventRepository;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -115,6 +117,7 @@ public class DeviceService {
             device.setId(req.preDeviceId());              // фиксируем preDeviceId как окончательный deviceId
             device.setSerialNumber(req.serial());
             device.markNew();
+            device.setCreatedAt(now);
         }
 
         device.setManufacturer(req.manufacturer());
@@ -123,7 +126,6 @@ public class DeviceService {
         device.setStatus(DeviceStatus.ACTIVE);
         device.setEnrolledAt(now);
         device.setUpdatedAt(now);
-        device.setCreatedAt(now);
 
         deviceRepository.save(device);
 
@@ -145,10 +147,12 @@ public class DeviceService {
         state.setUpdatedAt(now);
         deviceStateRepository.save(state);
 
-        deviceEventService.append(
-                device,
-                DeviceEvents.REGISTERED,
-                now);
+        DeviceEvent registeredEvent = DeviceEvent.builder()
+                .device(device)
+                .event(DeviceEvents.REGISTERED)
+                .occurredAt(now)
+                .build();
+        deviceEventRepository.save(registeredEvent);
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);
