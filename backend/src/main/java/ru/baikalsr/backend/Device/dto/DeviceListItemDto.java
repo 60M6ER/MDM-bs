@@ -7,5 +7,6 @@ public record DeviceListItemDto(
         String inventoryNumber,
         String model,
         String manufacturer,
-        String deviceName
+        String deviceName,
+        String serialNumber
 ) {}

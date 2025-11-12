@@ -32,7 +32,8 @@
             >
               <q-item-section>
                 <q-item-label class="text-weight-medium">
-                  {{ d.deviceName || d.inventoryNumber || shortId(d.deviceId) }}
+<!--                  {{ d.deviceName || d.inventoryNumber || shortId(d.deviceId) }}-->
+                  {{ d.serialNumber || shortId(d.deviceId) }}
                 </q-item-label>
                 <q-item-label caption>
                   {{ d.manufacturer || '—' }} {{ d.model || '' }}

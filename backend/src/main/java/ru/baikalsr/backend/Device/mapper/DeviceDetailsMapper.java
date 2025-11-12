@@ -13,8 +13,6 @@ import java.util.stream.Collectors;
 
 /**
  * Ручной маппер без MapStruct.
- * Держим сигнатуры методов такими же, как планировалось ранее,
- * чтобы контроллеры/сервисы не менялись.
  */
 @Component
 public class DeviceDetailsMapper {
@@ -84,7 +82,8 @@ public class DeviceDetailsMapper {
                 src.getInventoryNumber(),
                 src.getModel(),
                 src.getManufacturer(),
-                src.getDeviceName()
+                src.getDeviceName(),
+                src.getSerialNumber()
         );
     }
 

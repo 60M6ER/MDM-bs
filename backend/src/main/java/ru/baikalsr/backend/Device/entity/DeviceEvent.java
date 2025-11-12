@@ -23,6 +23,7 @@ import ru.baikalsr.backend.Device.enums.DeviceEvents;
 public class DeviceEvent {
 
     @Id
+    @GeneratedValue
     @Column(nullable = false)
     private UUID id;
 

@@ -9,16 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import ru.baikalsr.backend.Device.dto.*;
-import ru.baikalsr.backend.Device.entity.Device;
-import ru.baikalsr.backend.Device.entity.DeviceDetailsCurrent;
-import ru.baikalsr.backend.Device.entity.DeviceSecret;
-import ru.baikalsr.backend.Device.entity.DeviceState;
+import ru.baikalsr.backend.Device.entity.*;
+import ru.baikalsr.backend.Device.enums.DeviceEvents;
 import ru.baikalsr.backend.Device.enums.DeviceStatus;
 import ru.baikalsr.backend.Device.mapper.DeviceDetailsMapper;
-import ru.baikalsr.backend.Device.repository.DeviceDetailsCurrentRepository;
-import ru.baikalsr.backend.Device.repository.DeviceRepository;
-import ru.baikalsr.backend.Device.repository.DeviceSecretRepository;
-import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
+import ru.baikalsr.backend.Device.repository.*;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -36,6 +31,7 @@ public class DeviceService {
     private final DeviceSecretRepository deviceSecretRepository;
     private final PreprovisionCache preprovisionCache;
     private final PasswordEncoder passwordEncoder;
+    private final DeviceEventService deviceEventService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -148,6 +144,11 @@ public class DeviceService {
         state.setOsVersion(req.osVersion());
         state.setUpdatedAt(now);
         deviceStateRepository.save(state);
+
+        deviceEventService.append(
+                device,
+                DeviceEvents.REGISTERED,
+                now);
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);

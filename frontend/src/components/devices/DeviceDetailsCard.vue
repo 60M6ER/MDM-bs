@@ -152,6 +152,57 @@
         </div>
       </div>
     </q-card-section>
+    <q-separator />
+
+    <!-- События -->
+    <q-card-section class="q-gutter-sm">
+      <div class="row items-center no-wrap">
+        <div class="text-subtitle2">Последние события</div>
+        <q-space />
+        <q-btn
+          flat dense round icon="refresh"
+          :loading="eventsLoading"
+          @click="fetchEvents"
+        />
+      </div>
+
+      <q-skeleton v-if="eventsLoading && events.length === 0" type="text" />
+      <q-skeleton v-if="eventsLoading && events.length === 0" type="text" />
+      <q-skeleton v-if="eventsLoading && events.length === 0" type="text" />
+
+      <div v-if="!eventsLoading && events.length === 0" class="text-grey-7">
+        Событий пока нет.
+      </div>
+
+      <q-list
+        v-else
+        bordered
+        class="rounded-borders"
+        style="max-height: 240px; overflow:auto"
+        dense
+      >
+        <q-item v-for="ev in events" :key="ev.id">
+          <q-item-section>
+            <div class="row items-center no-wrap">
+              <div class="text-weight-medium">
+                {{ eventLabel(ev.event) }}
+              </div>
+              <q-separator vertical inset class="q-mx-sm" />
+              <div class="text-caption text-grey-7">
+                {{ fmtTs(ev.occurredAt) }}
+              </div>
+            </div>
+          </q-item-section>
+          <q-item-section side v-if="ev.severity">
+            <q-badge outline :label="ev.severity" />
+          </q-item-section>
+        </q-item>
+      </q-list>
+
+      <div class="row justify-end q-mt-sm" v-if="canLoadMore">
+        <q-btn flat no-caps label="Показать ещё" @click="loadMore" :disable="eventsLoading" />
+      </div>
+    </q-card-section>
   </q-card>
 </template>
 
@@ -165,6 +216,11 @@ const props = defineProps({
 
 const loading = ref(false)
 const details = ref({})
+const events = ref([])
+const eventsLoading = ref(false)
+const page = ref(0)
+const pageSize = 50
+const canLoadMore = ref(false)
 
 function fmtTs(ts) {
   if (!ts) return ''
@@ -196,11 +252,59 @@ function num(v, suffix = '') {
   return n + suffix
 }
 
+async function fetchEvents(reset = true) {
+  eventsLoading.value = true
+  try {
+    if (reset) {
+      page.value = 0
+      events.value = []
+    }
+    const { data } = await apiClient.get(`/devices/${props.deviceId}/events`, {
+      params: { page: page.value, size: pageSize }
+    })
+    const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : [])
+    events.value = reset ? list : events.value.concat(list)
+
+    // для Page<> от Spring
+    if (typeof data?.totalPages === 'number' && typeof data?.number === 'number') {
+      canLoadMore.value = (data.number + 1) < data.totalPages
+    } else {
+      // фолбэк, если вернулся просто массив
+      canLoadMore.value = list.length === pageSize
+    }
+  } finally {
+    eventsLoading.value = false
+  }
+}
+
+function loadMore() {
+  page.value += 1
+  fetchEvents(false)
+}
+
+function eventLabel(eventEnum) {
+  // человекочитаемые подписи; дополни своими типами
+  switch (eventEnum) {
+    case 'BOOT_COMPLETED':
+      return 'Загрузка завершена'
+    case 'SHUTDOWN':
+      return 'Выключение'
+    case 'NETWORK_CHANGE':
+      return 'Смена сети'
+    case 'REGISTERED':
+      return 'Устройство зарегистрированно'
+    default:
+      return String(eventEnum || 'event')
+  }
+}
+
 async function fetchDetails() {
   loading.value = true
   try {
     const { data } = await apiClient.get(`/devices/${props.deviceId}`)
     details.value = data || {}
+
+    await fetchEvents(true)
   } finally {
     loading.value = false
   }

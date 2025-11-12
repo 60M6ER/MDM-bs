@@ -17,4 +17,5 @@ public enum DeviceEvents {
     APP_STOPPED,
     NETWORK_UP,
     NETWORK_DOWN,
+    REGISTERED,
 }
