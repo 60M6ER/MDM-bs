@@ -1,10 +1,13 @@
 package ru.baikalsr.backend.Setting.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -21,8 +24,9 @@ public class SettingEntity {
     @Column(length = 100, nullable = false)
     private String name;
 
-    @Column(columnDefinition = "jsonb", nullable = false)
-    private String value;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "value", columnDefinition = "jsonb", nullable = false)
+    private JsonNode value;
 
     @Column(nullable = false)
     @Builder.Default

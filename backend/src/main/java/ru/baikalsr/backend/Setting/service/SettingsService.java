@@ -1,5 +1,6 @@
 package ru.baikalsr.backend.Setting.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +52,7 @@ public class SettingsService {
         }
 
         try {
-            T dto = mapper.readValue(entityOpt.get().getValue(), type);
+            T dto = mapper.treeToValue(entityOpt.get().getValue(), type);
             cache.put(group, dto);
             return dto;
         } catch (Exception e) {
@@ -75,7 +76,7 @@ public class SettingsService {
         // AUTH_SETTINGS
         settingsRepository.findById(SettingGroup.AUTH_SETTINGS.name()).ifPresentOrElse(entity -> {
             try {
-                AuthSettingsCfg cfg = mapper.readValue(entity.getValue(), AuthSettingsCfg.class);
+                AuthSettingsCfg cfg = mapper.treeToValue(entity.getValue(), AuthSettingsCfg.class);
                 cache.put(SettingGroup.AUTH_SETTINGS, cfg);
                 log.info("Preloaded settings group: {}", SettingGroup.AUTH_SETTINGS);
             } catch (Exception ex) {
@@ -98,7 +99,8 @@ public class SettingsService {
         }
 
         try {
-            String json = mapper.writeValueAsString(payload);
+            //String json = mapper.writeValueAsString(payload);
+            JsonNode json = mapper.valueToTree(payload);
 
             SettingEntity entity = settingsRepository.findById(group.name())
                     .orElseGet(() -> SettingEntity.builder()

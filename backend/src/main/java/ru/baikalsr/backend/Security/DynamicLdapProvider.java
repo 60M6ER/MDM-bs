@@ -180,7 +180,8 @@ public class DynamicLdapProvider implements AuthenticationProvider, ApplicationL
         } catch (AuthenticationException ex) {
             // 6) Логируем отказ и пробрасываем выше (пусть Spring решит результат)
             log.warn("External LDAP/AD auth failed for '{}': {}", authentication.getName(), ex.getMessage());
-            throw ex;
+            //throw ex;
+            return null;
         }
     }
 

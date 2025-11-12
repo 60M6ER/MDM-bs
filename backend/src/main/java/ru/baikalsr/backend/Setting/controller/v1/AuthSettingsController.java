@@ -17,7 +17,7 @@ import java.net.Socket;
 import java.net.URL;
 
 @RestController
-@RequestMapping("/api/v1/settings/e-auth")
+@RequestMapping("/api/v1/settings/eauth")
 @RequiredArgsConstructor
 @Tag(name = "Settings: Auth", description = "Управление настройками централизованной авторизации (AD/LDAP/OIDC)")
 public class AuthSettingsController {

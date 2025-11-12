@@ -217,7 +217,7 @@ function getErrorMessage(err: unknown): string {
 async function load() {
   loading.value = true
   try {
-    const { data } = await apiClient.get('/settings/e-auth')
+    const { data } = await apiClient.get('/settings/eauth')
     const incoming = data as Partial<ExternalAuthSettings>
     // верхнеуровневые поля
     if (typeof incoming.enabled === 'boolean') model.enabled = incoming.enabled
@@ -242,7 +242,7 @@ async function onSave() {
   loading.value = true
   try {
     const payload = buildPayload()
-    await apiClient.put('/settings/e-auth', payload)
+    await apiClient.put('/settings/eauth', payload)
     statusMsg.value = 'Настройки сохранены'
     statusType.value = 'positive'
     $q.notify({ type: 'positive', message: 'Настройки сохранены' })
@@ -259,7 +259,7 @@ async function onSave() {
 async function onTest() {
   loading.value = true
   try {
-    const { data } = await apiClient.post('/settings/e-auth/test', buildPayload())
+    const { data } = await apiClient.post('/settings/eauth/test', buildPayload())
     const ok = !!data?.ok
     const msg = data?.message || (ok ? 'Подключение успешно' : 'Проверка не удалась')
     statusMsg.value = msg

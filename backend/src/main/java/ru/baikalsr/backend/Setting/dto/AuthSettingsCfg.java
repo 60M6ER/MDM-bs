@@ -1,14 +1,16 @@
 package ru.baikalsr.backend.Setting.dto;
 
+import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotNull;
 import ru.baikalsr.backend.Setting.enums.AuthProvider;
 
 import java.util.List;
 
 public record AuthSettingsCfg(
-        AuthProvider provider,
-        AdCfg ad,
-        LdapCfg ldap,
-        OidcCfg oidc
+        @NotNull AuthProvider provider,
+        @Nullable AdCfg ad,
+        @Nullable LdapCfg ldap,
+        @Nullable OidcCfg oidc
 ) {
     public record AdCfg(String domain, List<String> urls, String referral) {}
     public record LdapCfg(

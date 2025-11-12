@@ -7,10 +7,11 @@ import ru.baikalsr.backend.Setting.enums.SettingGroup;
 @Getter
 public class SettingsChangedEvent extends ApplicationEvent {
 
-    private SettingGroup settingGroup;
+    private final SettingGroup settingGroup;
 
     public SettingsChangedEvent(Object source, SettingGroup settingGroup) {
         super(source);
+        this.settingGroup = settingGroup;
     }
 
 

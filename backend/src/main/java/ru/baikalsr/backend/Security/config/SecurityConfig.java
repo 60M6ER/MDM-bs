@@ -4,13 +4,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -18,6 +23,8 @@ import org.springframework.web.servlet.DispatcherServlet;
 import ru.baikalsr.backend.Security.DynamicLdapProvider;
 import ru.baikalsr.backend.Security.JwtAuthFilter;
 import ru.baikalsr.backend.User.service.AppUserDetailsService;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +37,37 @@ public class SecurityConfig {
     private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
     private final JsonAuthEntryPoint jsonAuthEntryPoint;
 
+    @Bean
+    AuthenticationProvider localAuthProvider(UserDetailsService uds, PasswordEncoder enc) {
+        return new AuthenticationProvider() {
+            @Override
+            public Authentication authenticate(Authentication a) throws AuthenticationException {
+                if (!(a instanceof UsernamePasswordAuthenticationToken)) return null;
+                String username = a.getName();
+                String raw = (String) a.getCredentials();
+
+                var u = uds.loadUserByUsername(username);           // UsernameNotFoundException → цепочка пойдёт дальше
+                if (!enc.matches(raw, u.getPassword())) {
+                    throw new BadCredentialsException("Bad credentials");
+                }
+                return new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities());
+            }
+            @Override
+            public boolean supports(Class<?> c) {
+                return UsernamePasswordAuthenticationToken.class.isAssignableFrom(c);
+            }
+        };
+    }
+
+//    @Bean
+//    AuthenticationManager authenticationManager(UserDetailsService uds,
+//                                                PasswordEncoder encoder,
+//                                                AuthenticationProvider dynamicLdapProvider) {
+//        var dao = new DaoAuthenticationProvider();           // да, конструктор помечен deprecated, но работает
+//        dao.setUserDetailsService(uds);
+//        dao.setPasswordEncoder(encoder);
+//        return new ProviderManager(List.of(dao, dynamicLdapProvider));
+//    }
 
     @Bean
     AuthenticationManager authenticationManager(HttpSecurity http,
@@ -37,7 +75,8 @@ public class SecurityConfig {
         var builder = http.getSharedObject(AuthenticationManagerBuilder.class);
 
         // DAO (UserDetailsService + PasswordEncoder)
-        builder.userDetailsService(uds).passwordEncoder(encoder);
+        //builder.userDetailsService(uds).passwordEncoder(encoder);
+        builder.authenticationProvider(localAuthProvider(uds, encoder));
 
         // Плюс кастомный LDAP-провайдер в ту же цепочку
         builder.authenticationProvider(dynamicLdapProvider);
