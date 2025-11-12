@@ -1,0 +1,97 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_state_pk_by_device
+      author: borislarionov
+      preConditions:
+        - onFail: MARK_RAN
+          columnExists:
+            tableName: device_state
+            columnName: device_id
+
+      changes:
+        # 1) Дедуп: оставляем самую свежую запись на device_id (до удаления колонки id)
+        - sql:
+            comment: "Dedup device_state: keep latest by updated_at, last_seen_at, id"
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns
+                           WHERE table_name='device_state' AND column_name='id') THEN
+                  WITH ranked AS (
+                    SELECT
+                      id,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY device_id
+                        ORDER BY updated_at DESC NULLS LAST,
+                                 last_seen_at DESC NULLS LAST,
+                                 id DESC
+                      ) AS rn
+                    FROM device_state
+                  )
+                  DELETE FROM device_state ds
+                  USING ranked r
+                  WHERE ds.id = r.id AND r.rn > 1;
+                ELSE
+                  WITH ranked AS (
+                    SELECT
+                      device_id,
+                      updated_at,
+                      last_seen_at,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY device_id
+                        ORDER BY updated_at DESC NULLS LAST,
+                                 last_seen_at DESC NULLS LAST
+                      ) AS rn
+                    FROM device_state
+                  )
+                  DELETE FROM device_state ds
+                  USING ranked r
+                  WHERE ds.device_id = r.device_id
+                    AND ds.updated_at IS NOT DISTINCT FROM r.updated_at
+                    AND ds.last_seen_at IS NOT DISTINCT FROM r.last_seen_at
+                    AND r.rn > 1;
+                END IF;
+              END$$;
+
+        # 2) Убираем старый PK (если был) — имя не указываем, Postgres поймёт
+        - dropPrimaryKey:
+            tableName: device_state
+
+        # 3) Удаляем колонку id (если она есть)
+        - preConditions:
+            - onFail: CONTINUE
+              columnExists:
+                tableName: device_state
+                columnName: id
+          changes:
+            - dropColumn:
+                tableName: device_state
+                columnName: id
+            # попробуем убрать последовательность, если была bigserial по умолчанию
+            - sql:
+                comment: "Drop old sequence if it existed for device_state.id"
+                splitStatements: true
+                endDelimiter: ";"
+                sql: |
+                  DROP SEQUENCE IF EXISTS device_state_id_seq;
+
+        # 4) Делаем device_id NOT NULL (на всякий случай)
+        - addNotNullConstraint:
+            tableName: device_state
+            columnName: device_id
+            columnDataType: uuid
+
+        # 5) Ставим новый PK по device_id
+        - addPrimaryKey:
+            tableName: device_state
+            columnNames: device_id
+            constraintName: device_state_pkey
+
+      rollback:
+        # Минимальный откат: снять FK/PK. (Восстановление id-колонки с данными — не делаем.)
+        - dropForeignKeyConstraint:
+            baseTableName: device_state
+            constraintName: fk_device_state_device
+        - dropPrimaryKey:
+            tableName: device_state

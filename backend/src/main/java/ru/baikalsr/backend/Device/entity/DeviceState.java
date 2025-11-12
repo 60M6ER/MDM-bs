@@ -2,6 +2,7 @@ package ru.baikalsr.backend.Device.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,14 +14,18 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DeviceState {
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(exclude = "device")
+public class DeviceState implements Persistable<UUID> {
 
+    // PK = FK → тот же столбец device_id
     @Id
-    @GeneratedValue
-    @Column(nullable = false)
-    private UUID id;
+    @Column(name = "device_id", nullable = false)
+    @EqualsAndHashCode.Include
+    private UUID deviceId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId // ← говорит, что PK этого entity берётся из FK на Device
     @JoinColumn(
             name = "device_id",
             nullable = false,
@@ -66,4 +71,37 @@ public class DeviceState {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Transient
+    private boolean _isNew = false;
+
+    @Override
+    public boolean isNew() {
+        // можно завязаться на createdUtc == null, но флаг надёжнее
+        return _isNew;
+    }
+
+    /** Вызывай это перед сохранением нового устройства */
+    public void markNew() {
+        this._isNew = true;
+    }
+
+    @Override
+    public UUID getId() {
+        return deviceId;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this._isNew = false;
+    }
+
+    public void setDevice(Device device) {
+        this.device = device;
+        if (this.deviceId == null) {
+            this.markNew();
+        }
+        this.deviceId = device.getId();
+    }
 }

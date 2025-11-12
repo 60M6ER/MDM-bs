@@ -140,12 +140,12 @@ public class DeviceService {
         deviceSecretRepository.save(deviceSecret);
 
         // 5) Инициализация состояния
-        var state = new DeviceState();
-        state.setDevice(device);
-        state.setAppVersion(req.appVersion());
-        state.setOsVersion(req.osVersion());
-        state.setUpdatedAt(now);
-        deviceStateRepository.save(state);
+        DeviceState deviceState = deviceStateRepository.findByDevice_Id(device.getId()).orElse(new DeviceState());
+        deviceState.setDevice(device);
+        deviceState.setAppVersion(req.appVersion());
+        deviceState.setOsVersion(req.osVersion());
+        deviceState.setUpdatedAt(now);
+        deviceStateRepository.save(deviceState);
 
         DeviceEvent registeredEvent = DeviceEvent.builder()
                 .device(device)
