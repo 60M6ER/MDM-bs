@@ -2,6 +2,7 @@ package ru.baikalsr.backend.Exchange.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import ru.baikalsr.backend.Exchange.dto.AckRequest;
 import ru.baikalsr.backend.Exchange.dto.DevicePullRequest;
@@ -24,19 +25,19 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     public DevicePullResponse pull(String deviceId, String requestId, DevicePullRequest req) {
         if ((requestId != null) && cache.seenRequest(deviceId, requestId)) {
-            //cache.touchHeartbeat(deviceId, System.currentTimeMillis());
-            return new DevicePullResponse(System.currentTimeMillis(), cache.pollCommands(deviceId, 50));
+            cache.touchHeartbeat(deviceId, System.currentTimeMillis());
+            // опционально: просто вернуть команды/пустой ответ
+            var commands = cache.pollCommands(deviceId, 50);
+            return new DevicePullResponse(System.currentTimeMillis(), commands);
         }
 
-        // состояния — строго через хендлеры по ключам
-        for (var s : req.states()) stateHandlers.dispatch(deviceId, s);
+        var effectiveRequestId = requestId != null ? requestId : UUID.randomUUID().toString();
 
-        // события — можно сразу в sink (батчем)
-        eventSink.append(deviceId, req.events());
-
-        cache.storeReport(deviceId, requestId != null ? requestId : UUID.randomUUID().toString(), req);
+        // 1) только кладём в кэш, без хендлеров
+        cache.storeReport(deviceId, effectiveRequestId, req);
         cache.touchHeartbeat(deviceId, System.currentTimeMillis());
 
+        // 2) отдаём команды как и раньше
         var commands = cache.pollCommands(deviceId, 50);
         return new DevicePullResponse(System.currentTimeMillis(), commands);
     }
@@ -46,5 +47,20 @@ public class ExchangeServiceImpl implements ExchangeService {
         if (requestId != null && cache.seenRequest(deviceId, requestId)) return;
         cache.storeAcks(deviceId, requestId != null ? requestId : UUID.randomUUID().toString(), req.acks());
         cache.touchHeartbeat(deviceId, System.currentTimeMillis());
+    }
+
+    @Scheduled(fixedDelay = 1000)
+    public void processReports() {
+        while (true) {
+            var batch = cache.pollReportsBatch(100); // или по одному
+            if (batch.isEmpty()) break;
+
+            for (var report : batch) {
+                for (var stateUpdate : report.updates()) {
+                    stateHandlerRegistry.dispatch(report.deviceId(), stateUpdate);
+                }
+                // можно пометить как обработанный, отправить события в EventSink и т.п.
+            }
+        }
     }
 }

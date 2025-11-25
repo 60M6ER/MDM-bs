@@ -13,5 +13,5 @@ public interface ExchangeCache {
     boolean seenRequest(String deviceId, String requestId);               // идемпотентность по X-Request-Id
     void storeAcks(String deviceId, String requestId, List<AckDto> acks);
     void touchHeartbeat(String deviceId, long nowMs);
-
+    pollReportsBatch(int batchSize);
 }

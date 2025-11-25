@@ -2,6 +2,7 @@ package ru.baikalsr.backend.common.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.baikalsr.backend.common.dto.HealthCheckDto;
 
 @RestController
 @RequestMapping("/api/v1/health_check")
@@ -12,10 +13,7 @@ public class HealthController {
             description = "Возвращает ok=true, если backend запущен"
     )
     @org.springframework.web.bind.annotation.GetMapping
-    public java.util.Map<String, Object> health() {
-        return java.util.Map.of(
-                "ok", true,
-                "message", "OK"
-        );
+    public HealthCheckDto health() {
+        return new HealthCheckDto(true, "ok");
     }
 }
