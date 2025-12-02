@@ -75,7 +75,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String p = request.getServletPath();
         // исключаем все пути авторизации, например /api/v_1/auth/**
-        return request.getDispatcherType() != DispatcherType.REQUEST
+        return request.getDispatcherType() != DispatcherType.REQUEST || p.startsWith("/api/v1/device_exchange/")
                 || !p.startsWith("/api") || p.startsWith("/api") && p.contains("/auth/");
     }
 }

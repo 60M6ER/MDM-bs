@@ -8,4 +8,5 @@ public enum StateKey {
     IP_ADDRESS,
     STORAGE_FREE_MB,
     TEMPERATURE_C,
+    KIOSK_IS_ON
 }

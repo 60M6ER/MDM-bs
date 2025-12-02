@@ -39,11 +39,14 @@ public class DeviceState implements Persistable<UUID> {
     @Column(name = "is_online", nullable = false)
     private boolean online;
 
+    @Column(name = "kiosk_is_on")
+    private Boolean kioskIsOn;
+
     @Column(name = "is_charging")
     private Boolean charging;
 
     @Column(name = "battery_level")
-    private Short batteryLevel;
+    private Byte batteryLevel;
 
     @Column(name = "os_version")
     private String osVersion;

@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.servlet.DispatcherServlet;
+import ru.baikalsr.backend.Security.DeviceAuthFilter;
 import ru.baikalsr.backend.Security.DynamicLdapProvider;
 import ru.baikalsr.backend.Security.JwtAuthFilter;
 import ru.baikalsr.backend.User.service.AppUserDetailsService;
@@ -36,6 +37,7 @@ public class SecurityConfig {
     private final AppUserDetailsService uds;
     private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
     private final JsonAuthEntryPoint jsonAuthEntryPoint;
+    private final DeviceAuthFilter deviceAuthFilter;
 
     @Bean
     AuthenticationProvider localAuthProvider(UserDetailsService uds, PasswordEncoder enc) {
@@ -115,7 +117,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationManager(am)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(deviceAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

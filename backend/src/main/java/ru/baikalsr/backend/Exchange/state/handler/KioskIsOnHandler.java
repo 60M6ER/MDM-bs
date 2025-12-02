@@ -14,21 +14,17 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-class BatteryPercentHandler implements StateHandler<Byte> {
+class KioskIsOnHandler implements StateHandler<Boolean> {
     private final DeviceStateRepository repo; // JPA/DAO куда пишем
-    public StateKey key() { return StateKey.BATTERY_PERCENT; }
-    public Class<Byte> type() { return Byte.class; }
+    public StateKey key() { return StateKey.KIOSK_IS_ON; }
+    public Class<Boolean> type() { return Boolean.class; }
 
     @Transactional
-    public void apply(String deviceId, Byte value, long at) {
-        if (value < 0 || value > 100) {
-            log.warn("Battery percent value out of range {} - [{}, {}]", value, 0, 100);
-        } else {
-            DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
-                    .orElse(new DeviceState());
+    public void apply(String deviceId, Boolean value, long at) {
+        DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
+                .orElse(new DeviceState());
 
-            deviceState.setBatteryLevel(value);
-            repo.save(deviceState);
-        }
+        deviceState.setKioskIsOn(value);
+        repo.save(deviceState);
     }
 }

@@ -23,7 +23,7 @@ import ru.baikalsr.backend.Security.model.DevicePrincipal;
         description = "Точка обмена данными между устройством и MDM-сервером"
 )
 @RestController
-@RequestMapping("/api/device_exchange")
+@RequestMapping("/api/v1/device_exchange")
 @RequiredArgsConstructor
 public class DeviceExchangeController {
     private final ExchangeService service;

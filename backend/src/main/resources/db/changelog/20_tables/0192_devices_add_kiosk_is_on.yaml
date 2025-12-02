@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0192-devices-add-kiosk-is-on
+      author: larionovB
+      changes:
+        - addColumn:
+            tableName: devices
+            columns:
+              - column:
+                  name: kiosk_is_on
+                  type: boolean
+                  defaultValueBoolean: false

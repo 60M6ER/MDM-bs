@@ -2,20 +2,21 @@ package ru.baikalsr.backend.Exchange.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import ru.baikalsr.backend.Exchange.dto.AckRequest;
-import ru.baikalsr.backend.Exchange.dto.DevicePullRequest;
-import ru.baikalsr.backend.Exchange.dto.DevicePullResponse;
+import ru.baikalsr.backend.Exchange.dto.*;
 import ru.baikalsr.backend.Exchange.service.EventSink;
 import ru.baikalsr.backend.Exchange.service.ExchangeCache;
 import ru.baikalsr.backend.Exchange.service.ExchangeService;
 import ru.baikalsr.backend.Exchange.state.StateHandlerRegistry;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExchangeServiceImpl implements ExchangeService {
     private final ExchangeCache cache;
     private final StateHandlerRegistry stateHandlers;
@@ -52,14 +53,32 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Scheduled(fixedDelay = 1000)
     public void processReports() {
         while (true) {
-            var batch = cache.pollReportsBatch(100); // или по одному
-            if (batch.isEmpty()) break;
+            List<DeviceReport> batch = cache.pollReportsBatch(100);
+            if (batch.isEmpty()) {
+                break;
+            }
 
-            for (var report : batch) {
-                for (var stateUpdate : report.updates()) {
-                    stateHandlerRegistry.dispatch(report.deviceId(), stateUpdate);
+            for (DeviceReport report : batch) {
+                DevicePullRequest payload = report.payload();
+                if (payload == null || payload.states() == null || payload.states().isEmpty()) {
+                    continue;
                 }
-                // можно пометить как обработанный, отправить события в EventSink и т.п.
+
+                for (StateUpdate stateUpdate : payload.states()) {
+                    try {
+                        stateHandlers.dispatch(report.deviceId(), stateUpdate);
+                    } catch (Exception e) {
+                        log.error(
+                                "Failed to process state {} from device {} (requestId={}, receivedAt={})",
+                                stateUpdate.key(),
+                                report.deviceId(),
+                                report.requestId(),
+                                report.receivedAtMs(),
+                                e
+                        );
+                        // тут по желанию: можно сложить в DLQ, метрики, алерт и т.п.
+                    }
+                }
             }
         }
     }

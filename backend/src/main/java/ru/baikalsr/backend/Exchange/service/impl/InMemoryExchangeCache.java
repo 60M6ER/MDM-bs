@@ -5,9 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Component;
 import ru.baikalsr.backend.Exchange.ExchangeCacheProperties;
-import ru.baikalsr.backend.Exchange.dto.AckDto;
-import ru.baikalsr.backend.Exchange.dto.CommandDto;
-import ru.baikalsr.backend.Exchange.dto.DevicePullRequest;
+import ru.baikalsr.backend.Exchange.dto.*;
 import ru.baikalsr.backend.Exchange.service.ExchangeCache;
 
 import java.util.ArrayList;
@@ -29,8 +27,11 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
 
     // Последнее «состояние канала» (для отладки/админки)
     private final ConcurrentMap<String, Long> heartbeats = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, DevicePullRequest> lastReports = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, List<AckDto>> lastAcks = new ConcurrentHashMap<>();
+    // очередь репортов от устройств
+    private final Deque<DeviceReport> reportQueue = new ConcurrentLinkedDeque<>();
+
+    // очередь ack'ов от устройств
+    private final Deque<DeviceAckBatch> ackQueue = new ConcurrentLinkedDeque<>();
 
     // Фоновая очистка
     private final ScheduledExecutorService cleaner =
@@ -78,8 +79,21 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
 
     @Override
     public void storeReport(String deviceId, String requestId, DevicePullRequest req) {
-        if (requestId != null) markSeen(deviceId, requestId);
-        lastReports.put(deviceId, req);
+        if (requestId != null) {
+            markSeen(deviceId, requestId);
+        }
+
+        long now = System.currentTimeMillis();
+
+        reportQueue.addLast(new DeviceReport(
+                deviceId,
+                requestId,
+                req,
+                now
+        ));
+
+        // ограничиваем размер очереди, чтобы не раздувалась память
+        trimReportQueue();
     }
 
     @Override
@@ -99,8 +113,60 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
 
     @Override
     public void storeAcks(String deviceId, String requestId, List<AckDto> acks) {
-        if (requestId != null) markSeen(deviceId, requestId);
-        lastAcks.put(deviceId, acks == null ? List.of() : List.copyOf(acks));
+        if (requestId != null) {
+            markSeen(deviceId, requestId);
+        }
+
+        if (acks == null || acks.isEmpty()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+
+        ackQueue.addLast(new DeviceAckBatch(
+                deviceId,
+                requestId,
+                List.copyOf(acks),
+                now
+        ));
+
+        trimAckQueue();
+    }
+
+    @Override
+    public List<DeviceReport> pollReportsBatch(int batchSize) {
+        List<DeviceReport> result = new ArrayList<>(batchSize);
+        for (int i = 0; i < batchSize; i++) {
+            DeviceReport r = reportQueue.pollFirst();
+            if (r == null) break;
+            result.add(r);
+        }
+        return result;
+    }
+
+    @Override
+    public List<DeviceAckBatch> pollAcksBatch(int batchSize) {
+        List<DeviceAckBatch> result = new ArrayList<>(batchSize);
+        for (int i = 0; i < batchSize; i++) {
+            DeviceAckBatch a = ackQueue.pollFirst();
+            if (a == null) break;
+            result.add(a);
+        }
+        return result;
+    }
+
+    private void trimReportQueue() {
+        int max = props.getMaxReportsInQueue(); // новое поле в настройках
+        while (reportQueue.size() > max) {
+            reportQueue.pollFirst();
+        }
+    }
+
+    private void trimAckQueue() {
+        int max = props.getMaxAcksInQueue(); // тоже из настроек
+        while (ackQueue.size() > max) {
+            ackQueue.pollFirst();
+        }
     }
 
     @Override
@@ -138,6 +204,7 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
         for (var e : seenReqUntil.entrySet()) {
             if (e.getValue() < now) seenReqUntil.remove(e.getKey(), e.getValue());
         }
+        cleanupReportsAndAcks();
 
         // чистим heartbeat, если очень старые (для экономии памяти)
         long hbCut = now - TimeUnit.SECONDS.toMillis(props.getHeartbeatTtlSec());
@@ -156,6 +223,25 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
                 if (!isExpired(head)) break;
                 q.pollFirst();
             }
+        }
+    }
+
+    private void cleanupReportsAndAcks() {
+        long now = System.currentTimeMillis();
+        long reportCut = now - TimeUnit.SECONDS.toMillis(props.getReportTtlSec());
+        long ackCut = now - TimeUnit.SECONDS.toMillis(props.getAckTtlSec());
+
+        // чистим голову очереди, пока элементы старше TTL
+        while (true) {
+            DeviceReport head = reportQueue.peekFirst();
+            if (head == null || head.receivedAtMs() >= reportCut) break;
+            reportQueue.pollFirst();
+        }
+
+        while (true) {
+            DeviceAckBatch head = ackQueue.peekFirst();
+            if (head == null || head.receivedAtMs() >= ackCut) break;
+            ackQueue.pollFirst();
         }
     }
 }

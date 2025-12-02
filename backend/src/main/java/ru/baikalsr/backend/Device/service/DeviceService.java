@@ -1,7 +1,6 @@
 package ru.baikalsr.backend.Device.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -13,13 +12,13 @@ import ru.baikalsr.backend.Device.dto.*;
 import ru.baikalsr.backend.Device.entity.*;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
 import ru.baikalsr.backend.Device.enums.DeviceStatus;
-import ru.baikalsr.backend.Device.event.DeviceRegisteredEvent;
 import ru.baikalsr.backend.Device.mapper.DeviceDetailsMapper;
 import ru.baikalsr.backend.Device.repository.*;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RequiredArgsConstructor
@@ -156,6 +155,12 @@ public class DeviceService {
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);
+    }
+
+    public boolean matchesSecret(Device device, String secretHeader) {
+        return deviceSecretRepository.findByDeviceId(device.getId())
+                .map(deviceSecret -> passwordEncoder.matches(secretHeader, deviceSecret.getSecretHash()))
+                .orElse(false);
     }
 
     private static String generateDeviceSecret(int bytesLen) {
