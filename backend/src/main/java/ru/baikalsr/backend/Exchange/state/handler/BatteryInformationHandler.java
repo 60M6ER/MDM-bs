@@ -16,7 +16,7 @@ import java.util.UUID;
 @Slf4j
 class BatteryPercentHandler implements StateHandler<Byte> {
     private final DeviceStateRepository repo; // JPA/DAO куда пишем
-    public StateKey key() { return StateKey.BATTERY_PERCENT; }
+    public StateKey key() { return StateKey.BATTERY_INFORMATION; }
     public Class<Byte> type() { return Byte.class; }
 
     @Transactional
