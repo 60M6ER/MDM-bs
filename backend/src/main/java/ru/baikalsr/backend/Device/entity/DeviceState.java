@@ -48,6 +48,12 @@ public class DeviceState implements Persistable<UUID> {
     @Column(name = "battery_level")
     private Byte batteryLevel;
 
+    @Column(name = "battery_temperature")
+    private Float batteryTemperature;
+
+    @Column(name = "battery_voltage")
+    private Float batteryVoltage;
+
     @Column(name = "os_version")
     private String osVersion;
 

@@ -3,7 +3,148 @@ info:
   title: MDM Device Exchange API
   version: 1.0.0
 
-paths: {}
+paths:
+  /api/device-exchange/pull:
+    post:
+      summary: Receive data from device
+      operationId: pull
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DevicePullRequest'
+      responses:
+        '200':
+          description: Commands for device
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicePullResponse'
 
 components:
-  schemas: {}
+  schemas:
+    DevicePullRequest:
+      type: object
+      description: Тело запроса при pull-запросе.
+      properties:
+        deviceTimeEpochMs:
+          type: number
+          description: время в миллисекундах на устройстве в момент отправки запроса.
+        states:
+          type: array
+          description: Список измененных состояний устройства.
+          items:
+            $ref: '#/components/schemas/StateDto'
+        events:
+          type: array
+          description: Список возникших событий на устройстве событий.
+          items:
+            $ref: '#/components/schemas/EventDto'
+    DevicePullResponse:
+      type: object
+      description: Ответ сервера устройству при pull-запросе.
+      properties:
+        serverTimeEpochMs:
+          type: integer
+          format: int64
+          description: |
+              Текущее время на сервере в миллисекундах с 01.01.1970 UTC.
+        commands:
+          type: array
+          description: Список команд для устройства.
+          items:
+            $ref: '#/components/schemas/CommandDto'
+      required:
+        - serverTimeEpochMs
+        - commands
+    CommandDto:
+      type: object
+      description: Описание команды для устройства.
+      properties:
+        key:
+          type: string
+          description: ключ команды.
+        payload:
+          type: string
+          description: данные для выполнения команды.
+        ttlSec:
+          type: integer
+          description: время жизни команды. время по истечению которого команда перестанет быть актуальной.
+        createdAtEpochMs:
+          type: number
+          description: точка времени создания команды на сервере.
+    StateDto:
+      type: object
+      description: Одно обновление состояния устройства.
+      oneOf:
+        - $ref: '#/components/schemas/BatteryInformationDto'
+        - $ref: '#/components/schemas/KioskIsOnStateDto'
+      discriminator:
+        propertyName: key
+        mapping:
+          BATTERY_INFORMATION: '#/components/schemas/BatteryInformationDto'
+          KIOSK_IS_ON: '#/components/schemas/KioskIsOnStateDto'
+      properties:
+        key:
+          type: string
+          description: ключ состояния устройства.
+        value:
+          type: string
+          description: Значение состояния.
+        observedAtEpochMs:
+          type: number
+          description: Время в миллисекундах, когда значение было изменено на устройстве.
+
+    BatteryInformationDto:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [BATTERY_INFORMATION]
+        value:
+          type: object
+          properties:
+            isCharging:
+              type: boolean
+            percent:
+              type: integer
+              minimum: 0
+              maximum: 100
+            voltage:
+              type: number
+              format: float
+            temperature:
+              type: number
+              format: float
+        observedAtEpochMs:
+          type: integer
+          format: int64
+      required: [key, value]
+
+    KioskIsOnStateDto:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [ KIOSK_IS_ON ]
+        value:
+          type: boolean
+        observedAtEpochMs:
+          type: integer
+          format: int64
+      required: [ key, value ]
+
+    EventDto:
+      type: object
+      description: Описание события возникшего на устройстве.
+      properties:
+        key:
+          type: string
+          description: ключ события.
+        payload:
+          type: string
+          description: данные сопровождаемые событием.
+        occurredAtEpochMs:
+          type: number
+          description: Время в миллисекундах, когда событие возникло на устройстве.

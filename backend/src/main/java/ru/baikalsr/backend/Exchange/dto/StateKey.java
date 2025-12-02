@@ -1,7 +1,7 @@
 package ru.baikalsr.backend.Exchange.dto;
 
 public enum StateKey {
-    BATTERY_PERCENT,
+    BATTERY_INFORMATION,
     FIRMWARE_VERSION,
     HW_REVISION,
     WIFI_SSID,

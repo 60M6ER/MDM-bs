@@ -59,11 +59,20 @@ public class DeviceDetailsCurrent {
     @Column(name = "is_online")
     private Boolean online;
 
+    @Column(name = "kiosk_is_on")
+    private Boolean kioskIsOn;
+
     @Column(name = "is_charging")
     private Boolean charging;
 
     @Column(name = "battery_level")
     private Short batteryLevel;
+
+    @Column(name = "battery_temperature")
+    private Double batteryTemperature;
+
+    @Column(name = "battery_voltage")
+    private Double batteryVoltage;
 
     @Column(name = "os_version")
     private String osVersion;

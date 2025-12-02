@@ -1,8 +1,11 @@
 databaseChangeLog:
   - changeSet:
-      id: device_details_current0
+      id: device_details_current1
       author: borislarionov
       changes:
+        - sql:
+            sql: |
+              DROP VIEW IF EXISTS device_details_current;
         - createView:
             viewName: device_details_current
             replaceIfExists: true
@@ -33,6 +36,9 @@ databaseChangeLog:
                 s.storage_total_mb              AS storage_total_mb,
                 s.storage_free_mb               AS storage_free_mb,
                 s.cpu_temp_c                    AS cpu_temp_c,
+                s.kiosk_is_on                   AS kiosk_is_on,
+                s.battery_temperature           AS battery_temperature,
+                s.battery_voltage               AS battery_voltage,
 
                 -- current owner (вью)
                 co.owner_display                AS owner_display,

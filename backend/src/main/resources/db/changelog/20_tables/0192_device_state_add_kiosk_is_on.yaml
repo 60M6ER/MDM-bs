@@ -1,12 +1,18 @@
 databaseChangeLog:
   - changeSet:
-      id: 0192-devices-add-kiosk-is-on
+      id: 0192-device_state-add-kiosk-is-on
       author: larionovB
       changes:
         - addColumn:
-            tableName: devices
+            tableName: device_state
             columns:
               - column:
                   name: kiosk_is_on
                   type: boolean
                   defaultValueBoolean: false
+              - column:
+                  name: battery_temperature
+                  type: double precision
+              - column:
+                  name: battery_voltage
+                  type: double precision

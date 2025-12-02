@@ -178,7 +178,7 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
 
     private CommandDto withCreatedAt(CommandDto c) {
         if (c.createdAtEpochMs() != null) return c;
-        return new CommandDto(c.type(), c.payload(), c.ttlSec(), System.currentTimeMillis());
+        return new CommandDto(c.key(), c.payload(), c.ttlSec(), System.currentTimeMillis());
     }
 
     private boolean isExpired(CommandDto c) {
