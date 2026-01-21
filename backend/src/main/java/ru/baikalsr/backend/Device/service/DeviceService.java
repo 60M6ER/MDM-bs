@@ -1,6 +1,10 @@
 package ru.baikalsr.backend.Device.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -14,15 +18,18 @@ import ru.baikalsr.backend.Device.enums.DeviceEvents;
 import ru.baikalsr.backend.Device.enums.DeviceStatus;
 import ru.baikalsr.backend.Device.mapper.DeviceDetailsMapper;
 import ru.baikalsr.backend.Device.repository.*;
+import ru.baikalsr.backend.Setting.dto.ExchangeSettingsCfg;
+import ru.baikalsr.backend.Setting.enums.SettingGroup;
+import ru.baikalsr.backend.Setting.service.SettingsService;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class DeviceService {
 
     private final DeviceRepository deviceRepository;
@@ -33,6 +40,8 @@ public class DeviceService {
     private final PreprovisionCache preprovisionCache;
     private final PasswordEncoder passwordEncoder;
     private final DeviceEventRepository deviceEventRepository;
+    private final SettingsService settingsService;
+    private final ObjectMapper objectMapper;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -72,21 +81,71 @@ public class DeviceService {
         return deviceRepository.existsBySerialNumber(serialNumber);
     }
 
-    public PreprovisionCreateResponse createPreprovision() {
+    public PreprovisionCreateResponse createPreprovision(HttpServletRequest request) {
         var t = preprovisionCache.create();
-        var qrPayload = Map.<String, Object>of(
-                "v", 1,
-                "preDeviceId", t.preDeviceId().toString(),
-                "regKey", t.regKey(),
-                // относительный эндпоинт — фронт сам подставит базовый URL
-                "endpoint", "/api/v1/devices/register"
-        );
+        Map<String, Object> qrPayload = new HashMap<>();
+
+        // 1. Базовый payload (системные поля)
+        Map<String, Object> basePreprovisionMap = getBasePreprovisionMap(request, t);
+
+        // 2. Забираем настройки обмена
+        ExchangeSettingsCfg exchangeCfg =
+                settingsService.get(SettingGroup.EXCHANGE_SETTINGS, ExchangeSettingsCfg.class);
+        //qrPayload.put("exchangePeriodSec", exchangeCfg.getExchangePeriodSec());
+        // 3. Если в настройках есть текст для QR — пробуем распарсить
+        if (exchangeCfg.getQrPayloadText() != null && !exchangeCfg.getQrPayloadText().isBlank()) {
+            try {
+                Map<String, Object> customPayload =
+                        objectMapper.readValue(
+                                exchangeCfg.getQrPayloadText(),
+                                new TypeReference<Map<String, Object>>() {}
+                        );
+
+                // кладём пользовательские поля первыми
+                qrPayload.putAll(customPayload);
+
+                if (qrPayload.containsKey("android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE")) {
+                    Map<String, Object> PROVISIONING_ADMIN_EXTRAS_BUNDLE = (Map<String, Object>) qrPayload.get("android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE");
+                    PROVISIONING_ADMIN_EXTRAS_BUNDLE.putAll(basePreprovisionMap);
+                }
+
+            } catch (Exception e) {
+                // принципиально НЕ падаем — QR всё равно должен быть выдан
+                log.warn("Failed to parse exchange QR payload template, ignoring it: {}", e.getMessage());
+            }
+        } else {
+            // TODO: Make exception and server answer
+            //qrPayload.put("error", "QR Payload text is missing");
+        }
+
+
         return new PreprovisionCreateResponse(
                 t.preDeviceId(),
                 t.regKey(),
                 t.expiresAt(),
                 qrPayload
         );
+    }
+
+    private static Map<String, Object> getBasePreprovisionMap(HttpServletRequest request, PreprovisionCache.Ticket t) {
+        String serverURL = request.getScheme() +
+                "://" +
+                request.getServerName() +
+                (request.getServerPort() == 80 || request.getServerPort() == 443
+                        ? ""
+                        : ":" + request.getServerPort());
+
+        Map<String, Object> qrPayload = new HashMap<>();
+        qrPayload.put("EXTRA_REGISTRATION_PRE_DEVICE_ID", t.preDeviceId().toString());
+        qrPayload.put("EXTRA_REGISTRATION_REG_KEY", t.regKey());
+        qrPayload.put("EXTRA_REGISTRATION_SERVER_URL", serverURL);
+        qrPayload.put("EXTRA_REGISTRATION_ENDPOINT", "/api/v1/devices/register");
+        return qrPayload;
+    }
+
+    @Transactional
+    public void deleteDevice(UUID deviceId) {
+        deviceRepository.deleteById(deviceId);
     }
 
     @Transactional

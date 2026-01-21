@@ -42,8 +42,17 @@
               <q-item-section side>
                 <q-badge outline align="middle">{{ d.model || '—' }}</q-badge>
               </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  icon="delete"
+                  color="negative"
+                  flat
+                  round
+                  dense
+                  @click.stop="confirmDelete(d)"
+                />
+              </q-item-section>
             </q-item>
-
             <q-item v-if="!loadingList && page.content.length === 0">
               <q-item-section>Устройств пока не создано.</q-item-section>
             </q-item>
@@ -84,11 +93,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
 import { apiClient } from "src/services/apiClient.js"
 import DeviceDetailsCard from 'src/components/devices/DeviceDetailsCard.vue'
 import PreprovisionDialog from 'src/components/devices/PreprovisionDialog.vue'
 
-
+const $q = useQuasar()
 const preprovOpen = ref(false)
 const split = ref(35)
 const loadingList = ref(false)
@@ -142,6 +152,50 @@ function reload() {
 
 function select(id) {
   selectedId.value = id
+}
+
+function confirmDelete(device) {
+  const title = device.serialNumber || shortId(device.deviceId)
+
+  $q.dialog({
+    title: 'Удалить устройство?',
+    message: `Устройство ${title} будет удалено без возможности восстановления.`,
+    persistent: true,
+    ok: {
+      label: 'Удалить',
+      color: 'negative'
+    },
+    cancel: {
+      label: 'Отмена',
+      flat: true
+    }
+  }).onOk(() => {
+    deleteDevice(device.deviceId)
+  })
+}
+
+async function deleteDevice(deviceId) {
+  try {
+    $q.loading.show()
+    console.log('id:' + deviceId)
+
+    await apiClient.delete(`/devices/${deviceId}`)
+
+    await reload()
+
+    $q.notify({
+      type: 'positive',
+      message: 'Устройство удалено'
+    })
+  } catch (e){
+    $q.notify({
+      type: 'negative',
+      message: 'Ошибка при удалении устройства'
+    })
+    console.log(e)
+  } finally {
+    $q.loading.hide()
+  }
 }
 
 onMounted(() => {

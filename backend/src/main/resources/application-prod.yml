@@ -37,10 +37,16 @@ logging:
     org.springframework.security: DEBUG
 
 springdoc:
-  swagger-ui:
-    path: /api-docs
   api-docs:
-    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    enabled: true
+    urls:
+      - name: "UI API"
+        url: /v3/api-docs
+      - name: "Device exchange API"
+        url: /openapi/device_exchange.yaml
+    urls-primary-name: "UI API"   # какая дока открывается по умолчанию (опционально)
 security:
   jwt:
     secret: ${JWT_SECRET:dev-secret-change-me}

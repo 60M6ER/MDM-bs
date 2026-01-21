@@ -1,6 +1,6 @@
 package ru.baikalsr.backend.Exchange.state;
 
-import ru.baikalsr.backend.Exchange.dto.StateKey;
+import ru.baikalsr.backend.Device.enums.StateKey;
 
 public interface StateHandler<T> {
     StateKey key();

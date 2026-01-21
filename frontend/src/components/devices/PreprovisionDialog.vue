@@ -87,6 +87,13 @@ async function fetchPreprovision() {
       preDeviceId: data.preDeviceId,
       regKey: data.regKey
     }
+    if (
+      data.qrPayload &&
+      typeof data.qrPayload === 'object' &&
+      Object.keys(data.qrPayload).length > 0
+    ) {
+      payload.value = data.qrPayload
+    }
     // await nextTick()
     // // рендерим QR
     // await QRCode.toCanvas(qrCanvas.value, JSON.stringify(payload.value), {

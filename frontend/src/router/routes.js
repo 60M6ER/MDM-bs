@@ -15,6 +15,7 @@ const routes = [
         children: [
           { path: '', redirect: '/settings/app' },
           { path: 'app', component: () => import('pages/settings/AppSettingsPage.vue') },
+          { path: 'exchange_devices', component: () => import('pages/settings/ExchangeSettingsPage.vue') },
           {
             path: 'departments/:id?',
             component: () => import('pages/settings/DepartmentsShell.vue'),

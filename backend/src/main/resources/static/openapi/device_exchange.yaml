@@ -6,7 +6,8 @@ info:
 paths:
   /api/device-exchange/pull:
     post:
-      summary: Receive data from device
+      summary: Получение данных с устройств
+      description: Изменения данных состояния и события приходят в массивах. Массивы могут быть пустыми.
       operationId: pull
       requestBody:
         required: true
@@ -16,7 +17,7 @@ paths:
               $ref: '#/components/schemas/DevicePullRequest'
       responses:
         '200':
-          description: Commands for device
+          description: Команды возвращаемые на устройство. Если массив пуст значит команд нет.
           content:
             application/json:
               schema:
@@ -61,6 +62,12 @@ components:
     CommandDto:
       type: object
       description: Описание команды для устройства.
+      oneOf:
+        - $ref: '#/components/schemas/SetKioskModeDto'
+      discriminator:
+        propertyName: key
+        mapping:
+          SET_KIOSK_MODE: '#/components/schemas/SetKioskModeDto'
       properties:
         key:
           type: string
@@ -74,6 +81,25 @@ components:
         createdAtEpochMs:
           type: number
           description: точка времени создания команды на сервере.
+    SetKioskModeDto:
+      type: object
+      description: Структура команды установки режима киоска.
+      properties:
+        key:
+          type: string
+          enum: [SET_KIOSK_MODE]
+        payload:
+          type: object
+          properties:
+            value:
+              type: boolean
+        ttlSec:
+          type: integer
+          description: время жизни команды. время по истечению которого команда перестанет быть актуальной.
+        createdAtEpochMs:
+          type: number
+          description: точка времени создания команды на сервере.
+      required: [ key, payload ]
     StateDto:
       type: object
       description: Одно обновление состояния устройства.
@@ -138,6 +164,12 @@ components:
     EventDto:
       type: object
       description: Описание события возникшего на устройстве.
+      oneOf:
+        - $ref: '#/components/schemas/KioskModeToggledDto'
+      discriminator:
+        propertyName: key
+        mapping:
+          KIOSK_MODE_TOGGLED: '#/components/schemas/KioskModeToggledDto'
       properties:
         key:
           type: string
@@ -148,3 +180,19 @@ components:
         occurredAtEpochMs:
           type: number
           description: Время в миллисекундах, когда событие возникло на устройстве.
+    KioskModeToggledDto:
+      type: object
+      description: События изменения состояния активности режима киоска. true - если включен режим киоска.
+      properties:
+        key:
+          type: string
+          enum: [KIOSK_MODE_TOGGLED]
+        payload:
+          type: object
+          properties:
+            value:
+              type: boolean
+        occurredAtEpochMs:
+          type: number
+          description: Время в миллисекундах, когда событие возникло на устройстве.
+      required: [ key, payload ]

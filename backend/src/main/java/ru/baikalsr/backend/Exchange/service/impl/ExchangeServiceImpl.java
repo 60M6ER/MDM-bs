@@ -9,6 +9,7 @@ import ru.baikalsr.backend.Exchange.dto.*;
 import ru.baikalsr.backend.Exchange.service.EventSink;
 import ru.baikalsr.backend.Exchange.service.ExchangeCache;
 import ru.baikalsr.backend.Exchange.service.ExchangeService;
+import ru.baikalsr.backend.Exchange.service.event.EventHandlerRegistry;
 import ru.baikalsr.backend.Exchange.state.StateHandlerRegistry;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class ExchangeServiceImpl implements ExchangeService {
     private final ExchangeCache cache;
     private final StateHandlerRegistry stateHandlers;
+    private final EventHandlerRegistry eventHandlers;
     private final EventSink eventSink;            // куда писать события (кеш/аутбокс/БД)
     private final ObjectMapper om;
 
@@ -50,6 +52,11 @@ public class ExchangeServiceImpl implements ExchangeService {
         cache.touchHeartbeat(deviceId, System.currentTimeMillis());
     }
 
+    @Override
+    public void sendCommand(String deviceId, CommandDto command) {
+        cache.enqueueCommand(deviceId, command);
+    }
+
     @Scheduled(fixedDelay = 1000)
     public void processReports() {
         while (true) {
@@ -60,23 +67,47 @@ public class ExchangeServiceImpl implements ExchangeService {
 
             for (DeviceReport report : batch) {
                 DevicePullRequest payload = report.payload();
-                if (payload == null || payload.states() == null || payload.states().isEmpty()) {
+                if (payload == null) {
                     continue;
                 }
 
-                for (StateUpdate stateUpdate : payload.states()) {
-                    try {
-                        stateHandlers.dispatch(report.deviceId(), stateUpdate);
-                    } catch (Exception e) {
-                        log.error(
-                                "Failed to process state {} from device {} (requestId={}, receivedAt={})",
-                                stateUpdate.key(),
-                                report.deviceId(),
-                                report.requestId(),
-                                report.receivedAtMs(),
-                                e
-                        );
-                        // тут по желанию: можно сложить в DLQ, метрики, алерт и т.п.
+                // 1. Обработка состояний
+                if (payload.states() != null && !payload.states().isEmpty()) {
+                    for (StateUpdate stateUpdate : payload.states()) {
+                        try {
+                            stateHandlers.dispatch(report.deviceId(), stateUpdate);
+                        } catch (Exception e) {
+                            log.error(
+                                    "Failed to process state {} from device {} (requestId={}, receivedAt={})",
+                                    stateUpdate.key(),
+                                    report.deviceId(),
+                                    report.requestId(),
+                                    report.receivedAtMs(),
+                                    e
+                            );
+                            // сюда можно добавить DLQ/метрики
+                        }
+                    }
+                }
+
+                // 2. Обработка событий
+                if (payload.events() != null && !payload.events().isEmpty()) {
+                    for (EventItem eventItem : payload.events()) {
+                        try {
+                            // если нужно писать «сырые» события в EventSink, можно сделать:
+                            // eventSink.accept(report.deviceId(), eventItem);
+                            eventHandlers.dispatch(report.deviceId(), eventItem);
+                        } catch (Exception e) {
+                            log.error(
+                                    "Failed to process event {} from device {} (requestId={}, receivedAt={})",
+                                    eventItem.key(),
+                                    report.deviceId(),
+                                    report.requestId(),
+                                    report.receivedAtMs(),
+                                    e
+                            );
+                            // DLQ/метрики по событиям
+                        }
                     }
                 }
             }

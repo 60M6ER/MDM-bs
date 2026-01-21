@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.baikalsr.backend.Device.entity.DeviceState;
 import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
-import ru.baikalsr.backend.Exchange.dto.StateKey;
+import ru.baikalsr.backend.Device.enums.StateKey;
 import ru.baikalsr.backend.Exchange.state.StateHandler;
 
 import java.util.UUID;

@@ -18,4 +18,7 @@ public enum DeviceEvents {
     NETWORK_UP,
     NETWORK_DOWN,
     REGISTERED,
+    KIOSK_MODE_TOGGLED,
+    KIOSK_MODE_TOGGLED_ON,
+    KIOSK_MODE_TOGGLED_OFF,
 }

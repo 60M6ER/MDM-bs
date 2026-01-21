@@ -179,6 +179,17 @@
                         </configuration>
                     </execution>
 
+                    <!-- очистка dist перед сборкой -->
+                    <execution>
+                        <id>frontend-clean</id>
+                        <goals>
+                            <goal>pnpm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run clean</arguments>
+                        </configuration>
+                    </execution>
+
                     <!-- 1.3 quasar build через pnpm -->
                     <execution>
                         <id>quasar-build</id>

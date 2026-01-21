@@ -13,6 +13,9 @@
             <q-item clickable v-ripple to="/settings/app" exact>
               <q-item-section>Настройки программы</q-item-section>
             </q-item>
+            <q-item clickable v-ripple to="/settings/exchange_devices" exact>
+              <q-item-section>Настройки устройств</q-item-section>
+            </q-item>
             <q-item clickable v-ripple to="/settings/departments" exact>
               <q-item-section>Подразделения</q-item-section>
             </q-item>

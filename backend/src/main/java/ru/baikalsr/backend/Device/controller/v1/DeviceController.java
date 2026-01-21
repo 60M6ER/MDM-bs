@@ -2,6 +2,7 @@ package ru.baikalsr.backend.Device.controller.v1;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -64,8 +65,8 @@ public class DeviceController {
                     Доступ: администратор.
                     """
     )
-    public PreprovisionCreateResponse createPreprovision() {
-        return deviceService.createPreprovision();
+    public PreprovisionCreateResponse createPreprovision(HttpServletRequest request) {
+        return deviceService.createPreprovision(request);
     }
 
     @PostMapping("/register")
@@ -80,5 +81,14 @@ public class DeviceController {
             @RequestBody DeviceRegisterByKeyRequest request
     ) {
         return deviceService.registerFromPreprovision(request);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Удалить устройство по ID",
+            description = "Принимает deviceId. Удаляет устройство и все связанные с ним записи из БД."
+    )
+    public void deleteDevice(@PathVariable("id") UUID deviceId) {
+        deviceService.deleteDevice(deviceId);
     }
 }

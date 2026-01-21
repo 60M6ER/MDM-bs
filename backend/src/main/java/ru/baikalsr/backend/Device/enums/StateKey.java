@@ -1,4 +1,4 @@
-package ru.baikalsr.backend.Exchange.dto;
+package ru.baikalsr.backend.Device.enums;
 
 public enum StateKey {
     BATTERY_INFORMATION,

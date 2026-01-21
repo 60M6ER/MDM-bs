@@ -17,10 +17,15 @@ spring:
     enabled: true
 springdoc:
   api-docs:
-    enabled: false
+    enabled: true
   swagger-ui:
     enabled: true
-    url: /openapi/openapi.yaml
+    urls:
+      - name: "UI API"
+        url: /v3/api-docs
+      - name: "Device exchange API"
+        url: /openapi/device_exchange.yaml
+    urls-primary-name: "UI API"   # какая дока открывается по умолчанию (опционально)
 security:
   jwt:
     secret: security:test_security_string_key
@@ -29,4 +34,4 @@ security:
 app:
   admin:
     username: Administrator
-    password: admin}
+    password: admin

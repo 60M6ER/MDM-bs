@@ -25,6 +25,7 @@ public enum SettingGroup {
      * </ul>
      */
     AUTH_SETTINGS,   // Настройки авторизации (LDAP, AD, OIDC)
+    EXCHANGE_SETTINGS, // Настройки обмена с устройствами
     //MAIL_SETTINGS,   // Настройки SMTP (если планируется рассылка)
     //UI_FEATURES,     // Управление фичами интерфейса (опционально)
     //SYSTEM_LIMITS    // Лимиты, таймауты и др. системные параметры

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import ru.baikalsr.backend.Exchange.dto.StateKey;
+import ru.baikalsr.backend.Device.enums.StateKey;
 import ru.baikalsr.backend.Exchange.dto.StateUpdate;
 
 import java.util.List;

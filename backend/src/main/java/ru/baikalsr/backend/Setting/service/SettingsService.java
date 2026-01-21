@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.baikalsr.backend.Setting.dto.AuthSettingsCfg;
+import ru.baikalsr.backend.Setting.dto.ExchangeSettingsCfg;
 import ru.baikalsr.backend.Setting.entity.SettingEntity;
 import ru.baikalsr.backend.Setting.event.SettingsChangedEvent;
 import ru.baikalsr.backend.Setting.enums.AuthProvider;
@@ -18,6 +19,7 @@ import ru.baikalsr.backend.Setting.repository.SettingsRepository;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +49,11 @@ public class SettingsService {
                 log.info("Settings '{}' not found, using defaults (disabled)", group);
                 return dto;
             }
+            if (group == SettingGroup.EXCHANGE_SETTINGS && type == ExchangeSettingsCfg.class) {
+                T dto = type.cast(defaultExchangeSettings());
+                cache.put(group, dto);
+                return dto;
+            }
             // для неизвестных групп пока бросаем, чтобы не скрыть ошибки разработки
             throw new IllegalStateException("Setting " + group + " not found");
         }
@@ -63,6 +70,12 @@ public class SettingsService {
                 log.warn("Failed to parse AUTH_SETTINGS, using defaults (disabled): {}", e.getMessage());
                 return dto;
             }
+            if (group == SettingGroup.EXCHANGE_SETTINGS && type == ExchangeSettingsCfg.class) {
+                T dto = type.cast(defaultExchangeSettings());
+                cache.put(group, dto);
+                log.warn("Failed to parse EXCHANGE_SETTINGS, using defaults: {}", e.getMessage());
+                return dto;
+            }
             throw new RuntimeException("Failed to parse settings for " + group, e);
         }
     }
@@ -73,19 +86,36 @@ public class SettingsService {
      */
     @PostConstruct
     public void preload() {
-        // AUTH_SETTINGS
-        settingsRepository.findById(SettingGroup.AUTH_SETTINGS.name()).ifPresentOrElse(entity -> {
+        preloadGroup(
+                SettingGroup.AUTH_SETTINGS,
+                AuthSettingsCfg.class,
+                this::defaultAuthSettings
+        );
+
+        preloadGroup(
+                SettingGroup.EXCHANGE_SETTINGS,
+                ExchangeSettingsCfg.class,
+                this::defaultExchangeSettings
+        );
+    }
+
+    private <T> void preloadGroup(
+            SettingGroup group,
+            Class<T> type,
+            Supplier<T> defaultSupplier
+    ) {
+        settingsRepository.findById(group.name()).ifPresentOrElse(entity -> {
             try {
-                AuthSettingsCfg cfg = mapper.treeToValue(entity.getValue(), AuthSettingsCfg.class);
-                cache.put(SettingGroup.AUTH_SETTINGS, cfg);
-                log.info("Preloaded settings group: {}", SettingGroup.AUTH_SETTINGS);
+                T cfg = mapper.treeToValue(entity.getValue(), type);
+                cache.put(group, cfg);
+                log.info("Preloaded settings group: {}", group);
             } catch (Exception ex) {
-                cache.put(SettingGroup.AUTH_SETTINGS, defaultAuthSettings());
-                log.warn("Failed to parse AUTH_SETTINGS at startup; using defaults (disabled): {}", ex.getMessage());
+                cache.put(group, defaultSupplier.get());
+                log.warn("Failed to parse {} at startup; using defaults", group);
             }
         }, () -> {
-            cache.put(SettingGroup.AUTH_SETTINGS, defaultAuthSettings());
-            log.info("AUTH_SETTINGS not found at startup; using defaults (disabled)");
+            cache.put(group, defaultSupplier.get());
+            log.info("{} not found at startup; using defaults", group);
         });
     }
 
@@ -94,29 +124,23 @@ public class SettingsService {
      */
     @Transactional
     public <T> void save(SettingGroup group, T payload) {
-        if (group == SettingGroup.AUTH_SETTINGS && payload instanceof AuthSettingsCfg authCfg) {
-            validateAuthSettings(authCfg);
-        }
-
         try {
-            //String json = mapper.writeValueAsString(payload);
             JsonNode json = mapper.valueToTree(payload);
 
             SettingEntity entity = settingsRepository.findById(group.name())
                     .orElseGet(() -> SettingEntity.builder()
                             .name(group.name())
-                            .value(json)
                             .version(1)
-                            .updatedAt(Instant.now())
                             .build());
 
             entity.setValue(json);
             entity.setUpdatedAt(Instant.now());
+
             settingsRepository.save(entity);
             cache.put(group, payload);
-            log.info("Updated settings group: {}", group);
-            // уведомим подписчиков (LDAP/AD провайдер и пр.)
+
             eventPublisher.publishEvent(new SettingsChangedEvent(this, group));
+            log.info("Updated settings group: {}", group);
         } catch (Exception e) {
             throw new RuntimeException("Failed to save settings for " + group, e);
         }
@@ -160,5 +184,12 @@ public class SettingsService {
     private AuthSettingsCfg defaultAuthSettings() {
         // provider=null → провайдер не выбран, внешняя авторизация выключена
         return new AuthSettingsCfg(null, null, null, null);
+    }
+
+    private ExchangeSettingsCfg defaultExchangeSettings() {
+        return new ExchangeSettingsCfg(
+                60,   // разумный дефолт
+                ""    // пусто, Android-разработчик заполнит
+        );
     }
 }
