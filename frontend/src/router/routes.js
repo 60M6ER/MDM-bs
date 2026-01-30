@@ -9,6 +9,11 @@ const routes = [
         meta: {requiresAuth: true}
       },
       {
+        path: '/devices',
+        component: () => import('pages/DevicesPage.vue'),
+        meta: {requiresAuth: true}
+      },
+      {
         path: '/settings',
         component: () => import('pages/settings/SettingsLayout.vue'),
         meta: {requiresAuth: true},

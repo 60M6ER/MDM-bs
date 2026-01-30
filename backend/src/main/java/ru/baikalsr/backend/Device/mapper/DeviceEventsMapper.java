@@ -11,6 +11,7 @@ public class DeviceEventsMapper {
         return new DeviceEventDto(
                 entity.getId(),
                 entity.getEvent(),
+                entity.getDetails(),
                 entity.getOccurredAt()
         );
     }

@@ -26,7 +26,7 @@ class BatteryInformationHandler implements StateHandler<BatteryInformationDTO> {
             log.warn("Battery percent value out of range {} - [{}, {}]", dto.percent(), 0, 100);
         } else {
             DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
-                    .orElse(new DeviceState());
+                    .orElse(new DeviceState(UUID.fromString(deviceId)));
 
             deviceState.setCharging(dto.isCharging());
             deviceState.setBatteryLevel(dto.percent());

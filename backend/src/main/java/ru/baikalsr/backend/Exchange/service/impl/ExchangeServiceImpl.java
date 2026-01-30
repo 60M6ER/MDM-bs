@@ -1,10 +1,12 @@
 package ru.baikalsr.backend.Exchange.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import ru.baikalsr.backend.Device.service.DeviceLastSeenService;
 import ru.baikalsr.backend.Exchange.dto.*;
 import ru.baikalsr.backend.Exchange.service.EventSink;
 import ru.baikalsr.backend.Exchange.service.ExchangeCache;
@@ -22,11 +24,12 @@ public class ExchangeServiceImpl implements ExchangeService {
     private final ExchangeCache cache;
     private final StateHandlerRegistry stateHandlers;
     private final EventHandlerRegistry eventHandlers;
+    private final DeviceLastSeenService deviceLastSeenService;
     private final EventSink eventSink;            // куда писать события (кеш/аутбокс/БД)
     private final ObjectMapper om;
 
     @Override
-    public DevicePullResponse pull(String deviceId, String requestId, DevicePullRequest req) {
+    public DevicePullResponse pull(String deviceId, String requestId, DevicePullRequest req, HttpServletRequest request) {
         if ((requestId != null) && cache.seenRequest(deviceId, requestId)) {
             cache.touchHeartbeat(deviceId, System.currentTimeMillis());
             // опционально: просто вернуть команды/пустой ответ
@@ -35,6 +38,8 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
 
         var effectiveRequestId = requestId != null ? requestId : UUID.randomUUID().toString();
+
+        deviceLastSeenService.updateLastSeenIpAsync(UUID.fromString(deviceId), request);
 
         // 1) только кладём в кэш, без хендлеров
         cache.storeReport(deviceId, effectiveRequestId, req);
@@ -46,7 +51,8 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
-    public void ack(String deviceId, String requestId, AckRequest req) {
+    public void ack(String deviceId, String requestId, AckRequest req, HttpServletRequest request) {
+        deviceLastSeenService.updateLastSeenIpAsync(UUID.fromString(deviceId), request);
         if (requestId != null && cache.seenRequest(deviceId, requestId)) return;
         cache.storeAcks(deviceId, requestId != null ? requestId : UUID.randomUUID().toString(), req.acks());
         cache.touchHeartbeat(deviceId, System.currentTimeMillis());

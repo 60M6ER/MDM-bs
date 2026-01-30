@@ -43,6 +43,8 @@ public class DeviceEvent {
     @Column(name = "event", nullable = false, length = 200)
     private DeviceEvents event;
 
+    private String details;
+
     /** Время возникновения события на устройстве или зафиксированное сервером. */
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;

@@ -37,6 +37,7 @@ public class DeviceService {
     private final DeviceDetailsCurrentRepository deviceDetailsCurrentRepository;
     private final DeviceDetailsMapper deviceDetailsMapper;
     private final DeviceSecretRepository deviceSecretRepository;
+    private final DeviceLastSeenService deviceLastSeenService;
     private final PreprovisionCache preprovisionCache;
     private final PasswordEncoder passwordEncoder;
     private final DeviceEventRepository deviceEventRepository;
@@ -149,7 +150,7 @@ public class DeviceService {
     }
 
     @Transactional
-    public DeviceRegisterResponse registerFromPreprovision(DeviceRegisterByKeyRequest req) {
+    public DeviceRegisterResponse registerFromPreprovision(DeviceRegisterByKeyRequest req, HttpServletRequest httpRequest) {
         // 1) Проверка ключа предрегистрации (одноразовый, с TTL)
         var ticketOpt = preprovisionCache.consume(req.preDeviceId(), req.regKey());
         if (ticketOpt.isEmpty()) {
@@ -185,7 +186,7 @@ public class DeviceService {
         device.setEnrolledAt(now);
         device.setUpdatedAt(now);
 
-        deviceRepository.save(device);
+        device = deviceRepository.save(device);
 
         DeviceSecret deviceSecret = deviceSecretRepository.findByDeviceId(device.getId()).orElse(new DeviceSecret());
         if (deviceSecret.getId() == null){
@@ -211,6 +212,8 @@ public class DeviceService {
                 .occurredAt(now)
                 .build();
         deviceEventRepository.save(registeredEvent);
+
+        deviceLastSeenService.updateLastSeenIpAsync(device.getId(), httpRequest);
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);

@@ -4,11 +4,22 @@ info:
   version: 1.0.0
 
 paths:
-  /api/device-exchange/pull:
+  /api/device_exchange/pull:
     post:
       summary: Получение данных с устройств
-      description: Изменения данных состояния и события приходят в массивах. Массивы могут быть пустыми.
+      description: Изменения данных состояния и события приходят в массивах. Массивы могут быть пустыми. Необходима авторизация по паре заголовков в запросе - X-Device-Id и X-Device-Secret.
+
       operationId: pull
+      security:
+        - DeviceId: []
+          DeviceSecret: []
+      parameters:
+        - in: header
+          name: X-Request-Id
+          required: false
+          schema:
+            type: string
+          description: Идентификатор запроса для трассировки (логирование/корреляция).
       requestBody:
         required: true
         content:
@@ -24,6 +35,17 @@ paths:
                 $ref: '#/components/schemas/DevicePullResponse'
 
 components:
+  securitySchemes:
+    DeviceId:
+      type: apiKey
+      in: header
+      name: X-Device-Id
+      description: Идентификатор устройства.
+    DeviceSecret:
+      type: apiKey
+      in: header
+      name: X-Device-Secret
+      description: Секрет устройства для авторизации.
   schemas:
     DevicePullRequest:
       type: object
@@ -105,12 +127,14 @@ components:
       description: Одно обновление состояния устройства.
       oneOf:
         - $ref: '#/components/schemas/BatteryInformationDto'
+        - $ref: '#/components/schemas/NetworkInformationDto'
         - $ref: '#/components/schemas/KioskIsOnStateDto'
       discriminator:
         propertyName: key
         mapping:
           BATTERY_INFORMATION: '#/components/schemas/BatteryInformationDto'
           KIOSK_IS_ON: '#/components/schemas/KioskIsOnStateDto'
+          NETWORK_INFORMATION: '#/components/schemas/NetworkInformationDto'
       properties:
         key:
           type: string
@@ -147,6 +171,23 @@ components:
           type: integer
           format: int64
       required: [key, value]
+
+    NetworkInformationDto:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [NETWORK_INFORMATION]
+        value:
+          type: object
+          properties:
+            typeNetwork:
+              type: string
+              enum: [WIFI, MOBILE]
+              description: Тип подключения к сети на устройстве. Может принимать значения WIFI, MOBILE.
+            wifiSsid:
+              type: string
+              description: SSID сети WiFi к которой подключено устройство.
 
     KioskIsOnStateDto:
       type: object

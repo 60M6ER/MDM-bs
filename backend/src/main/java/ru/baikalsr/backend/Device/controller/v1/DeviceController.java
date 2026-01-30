@@ -78,9 +78,10 @@ public class DeviceController {
                     """
     )
     public DeviceRegisterResponse registerDevice(
-            @RequestBody DeviceRegisterByKeyRequest request
+            @RequestBody DeviceRegisterByKeyRequest request,
+            HttpServletRequest httpRequest
     ) {
-        return deviceService.registerFromPreprovision(request);
+        return deviceService.registerFromPreprovision(request, httpRequest);
     }
 
     @DeleteMapping("/{id}")

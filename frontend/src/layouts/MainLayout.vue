@@ -12,7 +12,8 @@
       </q-toolbar>
 
       <q-tabs align="left">
-        <q-route-tab to="/" label="Устройства" />
+        <q-route-tab to="/" label="Статистика" />
+        <q-route-tab to="/devices" label="Устройства" />
         <q-route-tab to="/devices-on-map" label="Устройства на карте" />
         <q-route-tab to="/settings" label="Настройки" />
       </q-tabs>
@@ -30,6 +31,15 @@
           </q-avatar>
           <div>Title</div>
         </q-toolbar-title>
+        <a
+          href="/swagger-ui/index.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-white text-caption"
+          style="text-decoration: none;"
+        >
+          Документация API
+        </a>
       </q-toolbar>
     </q-footer>
   </q-layout>

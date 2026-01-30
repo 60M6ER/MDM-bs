@@ -1,5 +1,6 @@
 package ru.baikalsr.backend.Exchange.controller.v1;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +22,10 @@ public class DeviceExchangeController {
     public ResponseEntity<DevicePullResponse> pull(
             @AuthenticationPrincipal DevicePrincipal principal,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @Valid @RequestBody DevicePullRequest body
+            @Valid @RequestBody DevicePullRequest body,
+            HttpServletRequest request
     ) {
-        var resp = service.pull(principal.deviceId(), requestId, body);
+        var resp = service.pull(principal.deviceId(), requestId, body, request);
         return resp.commands().isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(resp);
     }
 
@@ -33,8 +35,9 @@ public class DeviceExchangeController {
             @AuthenticationPrincipal DevicePrincipal principal,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
             @Valid @RequestBody AckRequest body
+            , HttpServletRequest request
     ) {
-        service.ack(principal.deviceId(), requestId, body);
+        service.ack(principal.deviceId(), requestId, body, request);
         return ResponseEntity.accepted().build();
     }
 }

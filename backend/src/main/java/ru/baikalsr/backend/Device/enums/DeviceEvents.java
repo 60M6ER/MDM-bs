@@ -21,4 +21,9 @@ public enum DeviceEvents {
     KIOSK_MODE_TOGGLED,
     KIOSK_MODE_TOGGLED_ON,
     KIOSK_MODE_TOGGLED_OFF,
+    IP_CHANGED,
+    /** Отправлена команда устройству */
+    CREATE_COMMAND,
+    /** Получено подтверждение выполнения команды от устройства */
+    EXECUTE_COMMAND,
 }

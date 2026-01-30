@@ -9,6 +9,7 @@ import java.util.UUID;
 public record DeviceEventDto(
         UUID id,
         DeviceEvents event,
+        String details,
         Instant occurredAt
 ) {
 }

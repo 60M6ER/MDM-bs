@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: device_events2_add_details
+      author: borislarionov
+      changes:
+        - addColumn:
+            tableName: device_events
+            columns:
+              - column:
+                  name: details
+                  type: varchar(250)
+                  constraints:
+                    nullable: true

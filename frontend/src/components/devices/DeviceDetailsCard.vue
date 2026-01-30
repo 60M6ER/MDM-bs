@@ -293,6 +293,8 @@ function eventLabel(eventEnum) {
       return 'Смена сети'
     case 'REGISTERED':
       return 'Устройство зарегистрированно'
+    case 'IP_CHANGED':
+      return 'Изменился IP-адресс'
     default:
       return String(eventEnum || 'event')
   }

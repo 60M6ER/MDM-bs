@@ -3,6 +3,7 @@ package ru.baikalsr.backend.Device.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.domain.Persistable;
+import ru.baikalsr.backend.Device.enums.NetworkTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -61,7 +62,8 @@ public class DeviceState implements Persistable<UUID> {
     private String appVersion;
 
     @Column(name = "network_type")
-    private String networkType; // wifi / mobile / ethernet
+    @Enumerated(EnumType.STRING)
+    private NetworkTypes networkType;
 
     @Column(name = "wifi_ssid")
     private String wifiSsid;
@@ -88,6 +90,10 @@ public class DeviceState implements Persistable<UUID> {
     public boolean isNew() {
         // можно завязаться на createdUtc == null, но флаг надёжнее
         return _isNew;
+    }
+
+    public DeviceState(UUID deviceId) {
+        this.deviceId = deviceId;
     }
 
     /** Вызывай это перед сохранением нового устройства */
