@@ -50,6 +50,7 @@ public class DeviceDetailsMapper {
                 src.getStorageTotalMb(),
                 src.getStorageFreeMb(),
                 src.getCpuTempC(),
+                src.getKioskIsOn(),
 
                 // Owner
                 src.getOwnerDisplay(),

@@ -33,6 +33,7 @@ public record DeviceDetailsDto(
         Long storageTotalMb,
         Long storageFreeMb,
         Double cpuTempC,
+        Boolean isKioskMode,
 
         // Owner
         String ownerDisplay,

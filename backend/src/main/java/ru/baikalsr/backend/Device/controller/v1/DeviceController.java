@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -82,6 +84,21 @@ public class DeviceController {
             HttpServletRequest httpRequest
     ) {
         return deviceService.registerFromPreprovision(request, httpRequest);
+    }
+
+    @PostMapping("/setKioskMode")
+    @Operation(
+            summary = "Отправить команду setKioskMode",
+            description = """
+                    Ставит/снимает киоск-режим на устройстве.
+                    Эндпоинт-заготовка под UI: пока только контракт и статус 202.
+                    """
+    )
+    public ResponseEntity<Void> sendSetKioskModeCommand(
+            @RequestBody SetKioskModeCommandRequest request
+    ) {
+        deviceService.sendSetKioskModeCommand(request.device_id(), request.enabled());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @DeleteMapping("/{id}")

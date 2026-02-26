@@ -26,6 +26,7 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     setToken(token) {
+      console.log('[auth] setToken', token ? String(token).slice(0, 20) : null)
       this.token = token || null
       setAuthHeader(this.token)
     },
@@ -59,6 +60,7 @@ export const useAuthStore = defineStore('auth', {
       return {message: data?.message || 'ok', code: data?.code || 'OK'}
     },
     logout() {
+      console.log('[auth] logout fired')
       console.log('[auth] logout has been asked →')
       this.setToken(null)
       this.user = null

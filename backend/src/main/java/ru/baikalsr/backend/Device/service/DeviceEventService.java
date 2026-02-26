@@ -42,7 +42,6 @@ public class DeviceEventService {
     @Transactional
     public DeviceEvent append(Device device, DeviceEvents event, Instant occurredAt) {
         var e = DeviceEvent.builder()
-                .id(UUID.randomUUID())
                 .device(device)
                 .event(event)
                 .occurredAt(occurredAt != null ? occurredAt : Instant.now())

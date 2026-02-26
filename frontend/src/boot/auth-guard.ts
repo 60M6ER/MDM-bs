@@ -4,7 +4,7 @@ import type { RouteLocationNormalized } from 'vue-router'
 
 export default boot(({ router }) => {
   router.beforeEach((to: RouteLocationNormalized) => {
-    const auth = useAuthStore() // без store: Pinia уже установлена приложением
+    const auth = useAuthStore() // Pinia уже установлена приложением
 
     // защищённые маршруты
     if ((to.meta as any).requiresAuth && !auth.isAuthenticated) {

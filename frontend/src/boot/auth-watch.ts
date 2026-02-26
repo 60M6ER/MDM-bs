@@ -5,6 +5,12 @@ import { watch } from 'vue'
 export default boot(({ router }) => {
   const auth = useAuthStore()
 
+  // При перезагрузке страницы token может быть восстановлен из persisted state,
+  // но axios не подхватит Authorization автоматически.
+  // Поэтому на старте явно инициализируем стор и синхронизируем заголовок.
+  auth.initFromPersist()
+  auth.setToken(auth.token)
+
   watch(
     () => auth.token,
     (t) => {
@@ -12,11 +18,9 @@ export default boot(({ router }) => {
       // диагностика
       console.debug('[auth-watch]', 'token:', t ? 'present' : 'missing', 'route:', cur.fullPath)
 
-      // редиректим ТОЛЬКО с защищённых страниц и не с login
-      if (!t && cur.name !== 'login' && cur.meta?.requiresAuth) {
-        void router.replace({ name: 'login', query: { redirect: cur.fullPath } })
-      }
+      // синхронизация Authorization header с текущим токеном
+      auth.setToken(t)
     },
-    { immediate: true } // запускаем при старте, покрывает кейс «зашли на защищённую без токена»
+    { immediate: true } // запускаем при старте и синхронизируем Authorization
   )
 })

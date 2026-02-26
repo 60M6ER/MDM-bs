@@ -16,8 +16,11 @@ import ru.baikalsr.backend.Device.dto.*;
 import ru.baikalsr.backend.Device.entity.*;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
 import ru.baikalsr.backend.Device.enums.DeviceStatus;
+import ru.baikalsr.backend.Device.enums.DeviceCommand;
 import ru.baikalsr.backend.Device.mapper.DeviceDetailsMapper;
 import ru.baikalsr.backend.Device.repository.*;
+import ru.baikalsr.backend.Exchange.dto.CommandDto;
+import ru.baikalsr.backend.Exchange.service.ExchangeService;
 import ru.baikalsr.backend.Setting.dto.ExchangeSettingsCfg;
 import ru.baikalsr.backend.Setting.enums.SettingGroup;
 import ru.baikalsr.backend.Setting.service.SettingsService;
@@ -43,6 +46,7 @@ public class DeviceService {
     private final DeviceEventRepository deviceEventRepository;
     private final SettingsService settingsService;
     private final ObjectMapper objectMapper;
+    private final ExchangeService exchangeService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -217,6 +221,29 @@ public class DeviceService {
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);
+    }
+
+    /**
+     * Временный метод под тестовый контроллер/UI.
+     * Создаёт CommandDto и кладёт команду в очередь через ExchangeService.
+     */
+    @Transactional
+    public void sendSetKioskModeCommand(UUID deviceId, boolean enabled) {
+        long nowMs = Instant.now().toEpochMilli();
+
+        // Минимальный payload, чтобы не плодить DTO-шки на этом этапе
+        Map<String, Object> payload = Map.of(
+                "value", enabled
+        );
+
+        CommandDto command = new CommandDto(
+                DeviceCommand.SET_KIOSK_MODE,
+                payload,
+                300L, // 5 минут — достаточно для редкого polling
+                nowMs
+        );
+
+        exchangeService.sendCommand(deviceId.toString(), command);
     }
 
     public boolean matchesSecret(Device device, String secretHeader) {

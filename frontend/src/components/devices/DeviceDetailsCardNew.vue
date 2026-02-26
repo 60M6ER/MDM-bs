@@ -59,6 +59,27 @@
         <!-- STATES -->
         <q-tab-panel name="states" class="q-pa-none">
           <div class="q-gutter-sm">
+            <div class="text-subtitle2">Управление</div>
+            <div class="row items-center no-wrap">
+              <div class="text-body2">
+                Режим киоска:
+                <span class="text-weight-medium">{{ kioskModeLabel }}</span>
+              </div>
+              <q-btn
+                class="q-ml-sm"
+                unelevated
+                dense
+                no-caps
+                :color="isKioskMode ? 'green' : 'red'"
+                :label="kioskToggleLabel"
+                :loading="kioskLoading"
+                :disable="loading || kioskLoading"
+                @click="toggleKioskMode"
+              />
+            </div>
+
+            <q-separator class="q-my-md" />
+
             <div class="text-subtitle2">Батарея</div>
             <q-input v-model="details.batteryLevel" label="Уровень" readonly />
             <q-toggle
@@ -83,10 +104,10 @@
           <div class="row items-center no-wrap q-mb-sm">
             <div class="text-subtitle2">Последние события</div>
             <q-space />
-            <q-btn flat dense round icon="refresh" :loading="eventsLoading" @click="fetchEvents(true)" />
+            <q-btn flat dense round icon="refresh" :loading="eventsRefreshing" @click="fetchEvents(true)" />
           </div>
 
-          <div v-if="!eventsLoading && events.length === 0" class="text-grey-7">
+          <div v-if="!eventsLoading && !eventsRefreshing && events.length === 0" class="text-grey-7">
             Событий пока нет.
           </div>
 
@@ -106,7 +127,7 @@
           </q-list>
 
           <div class="row justify-end q-mt-sm" v-if="canLoadMore">
-            <q-btn flat no-caps label="Показать ещё" @click="loadMore" :disable="eventsLoading" />
+            <q-btn flat no-caps label="Показать ещё" @click="loadMore" :disable="eventsLoading || eventsRefreshing" />
           </div>
         </q-tab-panel>
       </q-tab-panels>
@@ -126,7 +147,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { apiClient } from 'src/services/apiClient.js'
 
 const props = defineProps({ deviceId: { type: String, required: true } })
@@ -134,6 +155,12 @@ const props = defineProps({ deviceId: { type: String, required: true } })
 const loading = ref(false)
 const details = ref({})
 const tab = ref('states')
+
+const kioskLoading = ref(false)
+
+const isKioskMode = computed(() => Boolean(details.value?.isKioskMode))
+const kioskModeLabel = computed(() => (isKioskMode.value ? 'Включен' : 'Выключен'))
+const kioskToggleLabel = computed(() => (isKioskMode.value ? 'Выключить' : 'Включить'))
 
 const edit = ref({ deviceName: '', inventoryNumber: '' })
 const hasChanges = computed(() =>
@@ -144,7 +171,12 @@ const hasChanges = computed(() =>
 // --- events (как у тебя, почти без изменений)
 const events = ref([])
 const eventsLoading = ref(false)
+const eventsRefreshing = ref(false)
 const page = ref(0)
+
+let eventsPollTimer = null
+let detailsPollTimer = null
+
 const pageSize = 50
 const canLoadMore = ref(false)
 
@@ -176,33 +208,112 @@ function eventLabel(eventEnum) {
 }
 
 async function fetchEvents(reset = true) {
-  eventsLoading.value = true
+  // reset=true: обновляем первую страницу, но НЕ очищаем список заранее, чтобы не мигало
+  const isRefresh = reset
+  if (isRefresh) {
+    eventsRefreshing.value = true
+  } else {
+    eventsLoading.value = true
+  }
+
   try {
-    if (reset) { page.value = 0; events.value = [] }
+    const nextPage = reset ? 0 : page.value
+
     const { data } = await apiClient.get(`/devices/${props.deviceId}/events`, {
-      params: { page: page.value, size: pageSize }
+      params: { page: nextPage, size: pageSize }
     })
-    const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : [])
-    events.value = reset ? list : events.value.concat(list)
+
+    const list = Array.isArray(data?.content)
+      ? data.content
+      : (Array.isArray(data) ? data : [])
+
+    if (reset) {
+      page.value = 0
+      events.value = list
+    } else {
+      events.value = events.value.concat(list)
+    }
+
     canLoadMore.value = (typeof data?.totalPages === 'number' && typeof data?.number === 'number')
       ? (data.number + 1) < data.totalPages
       : list.length === pageSize
   } finally {
-    eventsLoading.value = false
+    if (isRefresh) {
+      eventsRefreshing.value = false
+    } else {
+      eventsLoading.value = false
+    }
   }
 }
-function loadMore() { page.value += 1; fetchEvents(false) }
 
-async function fetchDetails() {
+function loadMore() {
+  if (eventsLoading.value || eventsRefreshing.value) return
+  page.value += 1
+  fetchEvents(false)
+}
+
+function startEventsPolling() {
+  stopEventsPolling()
+  eventsPollTimer = setInterval(() => {
+    if (tab.value === 'events' && !eventsLoading.value && !eventsRefreshing.value) {
+      fetchEvents(true)
+    }
+  }, 3000)
+}
+
+function stopEventsPolling() {
+  if (eventsPollTimer) {
+    clearInterval(eventsPollTimer)
+    eventsPollTimer = null
+  }
+}
+
+function startDetailsPolling() {
+  stopDetailsPolling()
+  detailsPollTimer = setInterval(() => {
+    if (tab.value === 'states' && !loading.value) {
+      // обновляем детали без дергания событий
+      fetchDetails(false)
+    }
+  }, 10000)
+}
+
+function stopDetailsPolling() {
+  if (detailsPollTimer) {
+    clearInterval(detailsPollTimer)
+    detailsPollTimer = null
+  }
+}
+
+async function fetchDetails(withEvents = false) {
   loading.value = true
   try {
     const { data } = await apiClient.get(`/devices/${props.deviceId}`)
     details.value = data || {}
     edit.value.deviceName = details.value.deviceName || ''
     edit.value.inventoryNumber = details.value.inventoryNumber || ''
-    await fetchEvents(true)
+    if (withEvents) {
+      await fetchEvents(true)
+    }
   } finally {
     loading.value = false
+  }
+}
+
+async function toggleKioskMode() {
+  kioskLoading.value = true
+  try {
+    const enabled = !isKioskMode.value
+    await apiClient.post('/devices/setKioskMode', {
+      device_id: props.deviceId,
+      enabled
+    })
+
+    // Переключаемся на события и начинаем чаще обновлять
+    tab.value = 'events'
+    await fetchEvents(true)
+  } finally {
+    kioskLoading.value = false
   }
 }
 
@@ -210,10 +321,36 @@ async function save() {
   // TODO: подставить ваш endpoint обновления (PATCH/PUT)
   // пример:
   // await apiClient.patch(`/devices/${props.deviceId}`, { deviceName: edit.value.deviceName, inventoryNumber: edit.value.inventoryNumber })
-  await fetchDetails()
+  await fetchDetails(false)
 }
 
-watch(() => props.deviceId, () => fetchDetails(), { immediate: true })
+watch(() => props.deviceId, async () => {
+  stopEventsPolling()
+  stopDetailsPolling()
+  await fetchDetails(false)
+  if (tab.value === 'events') startEventsPolling()
+  if (tab.value === 'states') startDetailsPolling()
+}, { immediate: true })
+
+watch(tab, async (v) => {
+  if (v === 'events') {
+    stopDetailsPolling()
+    await fetchEvents(true)
+    startEventsPolling()
+  } else if (v === 'states') {
+    stopEventsPolling()
+    await fetchDetails(false)
+    startDetailsPolling()
+  } else {
+    stopEventsPolling()
+    stopDetailsPolling()
+  }
+})
+
+onBeforeUnmount(() => {
+  stopEventsPolling()
+  stopDetailsPolling()
+})
 </script>
 
 <style scoped>
