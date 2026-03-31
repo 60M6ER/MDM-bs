@@ -1,0 +1,98 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0210-create-artifact-releases-table
+      author: chatgpt
+      changes:
+        - createTable:
+            tableName: artifact_release
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_artifact_release
+                    nullable: false
+
+              - column:
+                  name: app_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: version_code
+                  type: integer
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: version_name
+                  type: varchar(64)
+
+              - column:
+                  name: sha256
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: size_bytes
+                  type: bigint
+
+              - column:
+                  name: storage_path
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: storage_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: uploaded_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: uploaded_by
+                  type: varchar(128)
+
+              - column:
+                  name: notes
+                  type: text
+
+        - addForeignKeyConstraint:
+            baseTableName: artifact_release
+            baseColumnNames: app_id
+            constraintName: fk_artifact_release_app
+            referencedTableName: artifact_app
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addUniqueConstraint:
+            tableName: artifact_release
+            columnNames: app_id, version_code
+            constraintName: uk_artifact_release_app_version_code
+
+        - createIndex:
+            tableName: artifact_release
+            indexName: idx_artifact_release_app_id
+            columns:
+              - column:
+                  name: app_id
+
+        - createIndex:
+            tableName: artifact_release
+            indexName: idx_artifact_release_app_id_version_code
+            columns:
+              - column:
+                  name: app_id
+              - column:
+                  name: version_code

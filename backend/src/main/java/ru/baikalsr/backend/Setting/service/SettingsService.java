@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.baikalsr.backend.Setting.dto.AuthSettingsCfg;
 import ru.baikalsr.backend.Setting.dto.ExchangeSettingsCfg;
+import ru.baikalsr.backend.Setting.dto.PublicBasicUrlCfg;
 import ru.baikalsr.backend.Setting.entity.SettingEntity;
 import ru.baikalsr.backend.Setting.event.SettingsChangedEvent;
 import ru.baikalsr.backend.Setting.enums.AuthProvider;
@@ -54,6 +55,11 @@ public class SettingsService {
                 cache.put(group, dto);
                 return dto;
             }
+            if (group == SettingGroup.PUBLIC_BASIC_URL && type == PublicBasicUrlCfg.class) {
+                T dto = type.cast(defaultPublicBasicUrl());
+                cache.put(group, dto);
+                return dto;
+            }
             // для неизвестных групп пока бросаем, чтобы не скрыть ошибки разработки
             throw new IllegalStateException("Setting " + group + " not found");
         }
@@ -74,6 +80,12 @@ public class SettingsService {
                 T dto = type.cast(defaultExchangeSettings());
                 cache.put(group, dto);
                 log.warn("Failed to parse EXCHANGE_SETTINGS, using defaults: {}", e.getMessage());
+                return dto;
+            }
+            if (group == SettingGroup.PUBLIC_BASIC_URL && type == PublicBasicUrlCfg.class) {
+                T dto = type.cast(defaultPublicBasicUrl());
+                cache.put(group, dto);
+                log.warn("Failed to parse PUBLIC_BASIC_URL, using defaults: {}", e.getMessage());
                 return dto;
             }
             throw new RuntimeException("Failed to parse settings for " + group, e);
@@ -97,6 +109,12 @@ public class SettingsService {
                 ExchangeSettingsCfg.class,
                 this::defaultExchangeSettings
         );
+
+        preloadGroup(
+                SettingGroup.PUBLIC_BASIC_URL,
+                PublicBasicUrlCfg.class,
+                this::defaultPublicBasicUrl
+        );
     }
 
     private <T> void preloadGroup(
@@ -114,9 +132,25 @@ public class SettingsService {
                 log.warn("Failed to parse {} at startup; using defaults", group);
             }
         }, () -> {
-            cache.put(group, defaultSupplier.get());
-            log.info("{} not found at startup; using defaults", group);
+            T defaultCfg = defaultSupplier.get();
+            createDefaultSettingRecord(group, defaultCfg);
+            cache.put(group, defaultCfg);
+            log.info("{} not found at startup; created default record", group);
         });
+    }
+
+    private <T> void createDefaultSettingRecord(SettingGroup group, T payload) {
+        try {
+            SettingEntity entity = SettingEntity.builder()
+                    .name(group.name())
+                    .value(mapper.valueToTree(payload))
+                    .version(1)
+                    .updatedAt(Instant.now())
+                    .build();
+            settingsRepository.save(entity);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create default setting record for " + group, e);
+        }
     }
 
     /**
@@ -191,5 +225,9 @@ public class SettingsService {
                 60,   // разумный дефолт
                 ""    // пусто, Android-разработчик заполнит
         );
+    }
+
+    private PublicBasicUrlCfg defaultPublicBasicUrl() {
+        return new PublicBasicUrlCfg("");
     }
 }

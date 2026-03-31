@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0200-create-artifact-apps-table
+      author: larionovb
+      changes:
+        - createTable:
+            tableName: artifact_app
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_artifact_app
+                    nullable: false
+
+              - column:
+                  name: key
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_artifact_app_key
+
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: package_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false

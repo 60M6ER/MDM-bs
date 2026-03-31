@@ -14,6 +14,11 @@ const routes = [
         meta: {requiresAuth: true}
       },
       {
+        path: '/applications',
+        component: () => import('pages/ApplicationsPage.vue'),
+        meta: {requiresAuth: true}
+      },
+      {
         path: '/settings',
         component: () => import('pages/settings/SettingsLayout.vue'),
         meta: {requiresAuth: true},

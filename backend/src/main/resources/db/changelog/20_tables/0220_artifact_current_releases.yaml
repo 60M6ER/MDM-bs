@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0220-create-artifact-current-releases-table
+      author: chatgpt
+      changes:
+        - createTable:
+            tableName: artifact_current_release
+            columns:
+              - column:
+                  name: app_id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_artifact_current_release
+                    nullable: false
+
+              - column:
+                  name: release_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_artifact_current_release_release_id
+
+              - column:
+                  name: assigned_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: assigned_by
+                  type: varchar(128)
+
+        - addForeignKeyConstraint:
+            baseTableName: artifact_current_release
+            baseColumnNames: app_id
+            constraintName: fk_artifact_current_release_app
+            referencedTableName: artifact_app
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: artifact_current_release
+            baseColumnNames: release_id
+            constraintName: fk_artifact_current_release_release
+            referencedTableName: artifact_release
+            referencedColumnNames: id
+            onDelete: RESTRICT

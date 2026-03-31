@@ -53,6 +53,8 @@ security:
     ttl-seconds: ${JWT_TTL_SECONDS:3600}
     issuer: mdm-backend
 app:
+  artifact-storage:
+    root-path: ${APP_ARTIFACT_STORAGE_ROOT_PATH:/data/mdm/artifacts}
   admin:
     username: ${APP_ADMIN_USERNAME:Administrator}
     password: ${APP_ADMIN_PASSWORD:admin}

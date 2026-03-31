@@ -14,6 +14,7 @@
       <q-tabs align="left">
         <q-route-tab to="/" label="Статистика" />
         <q-route-tab to="/devices" label="Устройства" />
+        <q-route-tab to="/applications" label="Приложения" />
         <q-route-tab to="/devices-on-map" label="Устройства на карте" />
         <q-route-tab to="/settings" label="Настройки" />
       </q-tabs>

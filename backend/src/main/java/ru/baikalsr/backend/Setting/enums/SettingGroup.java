@@ -26,6 +26,7 @@ public enum SettingGroup {
      */
     AUTH_SETTINGS,   // Настройки авторизации (LDAP, AD, OIDC)
     EXCHANGE_SETTINGS, // Настройки обмена с устройствами
+    PUBLIC_BASIC_URL, // Публичный базовый URL backend для абсолютных ссылок
     //MAIL_SETTINGS,   // Настройки SMTP (если планируется рассылка)
     //UI_FEATURES,     // Управление фичами интерфейса (опционально)
     //SYSTEM_LIMITS    // Лимиты, таймауты и др. системные параметры

@@ -12,6 +12,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import ru.baikalsr.backend.Applications.dto.ApplicationReleaseDownloadLinkDto;
+import ru.baikalsr.backend.Applications.entity.ArtifactApp;
+import ru.baikalsr.backend.Applications.enums.ApplicationKey;
+import ru.baikalsr.backend.Applications.service.ApplicationsService;
 import ru.baikalsr.backend.Device.dto.*;
 import ru.baikalsr.backend.Device.entity.*;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
@@ -22,8 +26,10 @@ import ru.baikalsr.backend.Device.repository.*;
 import ru.baikalsr.backend.Exchange.dto.CommandDto;
 import ru.baikalsr.backend.Exchange.service.ExchangeService;
 import ru.baikalsr.backend.Setting.dto.ExchangeSettingsCfg;
+import ru.baikalsr.backend.Setting.dto.PublicBasicUrlCfg;
 import ru.baikalsr.backend.Setting.enums.SettingGroup;
 import ru.baikalsr.backend.Setting.service.SettingsService;
+import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -47,6 +53,7 @@ public class DeviceService {
     private final SettingsService settingsService;
     private final ObjectMapper objectMapper;
     private final ExchangeService exchangeService;
+    private final ApplicationsService applicationsService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -108,6 +115,7 @@ public class DeviceService {
 
                 // кладём пользовательские поля первыми
                 qrPayload.putAll(customPayload);
+                injectDeviceOwnerDownloadLocation(qrPayload);
 
                 if (qrPayload.containsKey("android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE")) {
                     Map<String, Object> PROVISIONING_ADMIN_EXTRAS_BUNDLE = (Map<String, Object>) qrPayload.get("android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE");
@@ -146,6 +154,44 @@ public class DeviceService {
         qrPayload.put("EXTRA_REGISTRATION_SERVER_URL", serverURL);
         qrPayload.put("EXTRA_REGISTRATION_ENDPOINT", "/api/v1/devices/register");
         return qrPayload;
+    }
+
+    private void injectDeviceOwnerDownloadLocation(Map<String, Object> qrPayload) {
+        String downloadUrl = resolveDeviceOwnerDownloadUrl();
+        if (!StringUtils.hasText(downloadUrl)) {
+            return;
+        }
+
+        qrPayload.put("android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION", downloadUrl);
+    }
+
+    private String resolveDeviceOwnerDownloadUrl() {
+        Optional<ArtifactApp> deviceOwnerAppOpt = applicationsService.findByKey(ApplicationKey.DEVICE_OWNER_APP);
+        if (deviceOwnerAppOpt.isEmpty() || !deviceOwnerAppOpt.get().isActive()) {
+            return null;
+        }
+
+        PublicBasicUrlCfg publicBasicUrlCfg = settingsService.get(SettingGroup.PUBLIC_BASIC_URL, PublicBasicUrlCfg.class);
+        if (publicBasicUrlCfg == null || !StringUtils.hasText(publicBasicUrlCfg.value())) {
+            return null;
+        }
+
+        try {
+            ApplicationReleaseDownloadLinkDto linkDto =
+                    applicationsService.getCurrentReleaseDownloadLinkByKey(ApplicationKey.DEVICE_OWNER_APP);
+            return joinUrl(publicBasicUrlCfg.value(), linkDto.downloadUrl());
+        } catch (ResponseStatusException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
+    private String joinUrl(String baseUrl, String relativePath) {
+        String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String normalizedPath = relativePath.startsWith("/") ? relativePath : "/" + relativePath;
+        return normalizedBase + normalizedPath;
     }
 
     @Transactional

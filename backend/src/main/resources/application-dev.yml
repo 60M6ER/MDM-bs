@@ -55,3 +55,5 @@ app:
   admin:
     username: Administrator
     password: ${APP_ADMIN_PASSWORD:admin}
+  artifact-storage:
+    root-path: ./.data/artifacts

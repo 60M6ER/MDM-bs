@@ -1,5 +1,28 @@
-<template>
+-<template>
   <div class="q-pa-md">
+    <div class="text-h6 q-mb-md">Настройки приложения</div>
+
+    <div class="text-h6 q-mb-md">PUBLIC_BASIC_URL</div>
+
+    <q-form class="q-gutter-md q-mb-xl" @submit.prevent="onSavePublicBasicUrl">
+      <q-input
+        v-model="publicBasicUrlModel.value"
+        label="PUBLIC_BASIC_URL"
+        outlined
+        dense
+        hint="Публичный базовый URL backend для формирования абсолютных ссылок, например https://mdm.example.com"
+      />
+
+      <div class="row q-gutter-sm">
+        <q-btn color="primary" label="Сохранить" type="submit" :loading="publicBasicUrlLoading" />
+        <q-btn flat label="Отмена" @click="onCancelPublicBasicUrl" :disable="publicBasicUrlLoading" />
+      </div>
+
+      <q-banner v-if="publicBasicUrlStatusMsg" class="q-mt-md" :type="publicBasicUrlStatusType">
+        {{ publicBasicUrlStatusMsg }}
+      </q-banner>
+    </q-form>
+
     <div class="text-h6 q-mb-md">Внешняя авторизация</div>
 
     <q-form class="q-gutter-md" @submit.prevent="onSave">
@@ -124,19 +147,44 @@ interface ExternalAuthSettings {
   oidc: OidcSettings
 }
 
+interface AuthSettingsApiResponse {
+  provider?: ExternalAuthSettings['provider'] | null
+  ad?: Partial<AdSettings> | null
+  ldap?: {
+    url?: string
+    baseDn?: string
+    userSearchFilter?: string
+    startTls?: boolean
+  } | null
+  oidc?: {
+    issuer?: string
+    clientId?: string
+    clientSecret?: string
+    redirectUri?: string
+    groupsClaim?: string
+  } | null
+}
+
 const $q = useQuasar()
 const loading = ref(false)
+const publicBasicUrlLoading = ref(false)
 const showBindPwd = ref(false)
 const showClientSecret = ref(false)
 const showAdvancedLdap = ref(false)
 const statusMsg = ref<string | null>(null)
 const statusType = ref<'positive' | 'negative' | 'warning' | 'info'>('info')
+const publicBasicUrlStatusMsg = ref<string | null>(null)
+const publicBasicUrlStatusType = ref<'positive' | 'negative' | 'warning' | 'info'>('info')
 
 const providerOptions = [
   { label: 'Active Directory (AD)', value: 'AD' },
   { label: 'LDAP / Active Directory', value: 'LDAP' },
   { label: 'OpenID Connect (OIDC)', value: 'OIDC' }
 ]
+
+const publicBasicUrlModel = reactive({
+  value: ''
+})
 
 const model = reactive<ExternalAuthSettings>({
   enabled: false,
@@ -188,6 +236,26 @@ watch(adUrlsText, (v) => {
 })
 
 function buildPayload() {
+  if (!model.enabled) {
+    return {
+      provider: null,
+      ad: { ...model.ad },
+      ldap: {
+        url: model.ldap.url,
+        baseDn: model.ldap.baseDn,
+        userSearchFilter: model.ldap.userSearchFilter,
+        startTls: model.ldap.startTLS
+      },
+      oidc: {
+        issuer: model.oidc.issuerUri,
+        clientId: model.oidc.clientId,
+        clientSecret: model.oidc.clientSecret,
+        redirectUri: model.oidc.redirectUri,
+        groupsClaim: model.oidc.rolesClaim
+      }
+    }
+  }
+
   if (model.provider === 'AD') {
     return {
       provider: 'AD' as const,
@@ -197,12 +265,23 @@ function buildPayload() {
   if (model.provider === 'LDAP') {
     return {
       provider: 'LDAP' as const,
-      ldap: { ...model.ldap }
+      ldap: {
+        url: model.ldap.url,
+        baseDn: model.ldap.baseDn,
+        userSearchFilter: model.ldap.userSearchFilter,
+        startTls: model.ldap.startTLS
+      }
     }
   }
   return {
     provider: 'OIDC' as const,
-    oidc: { ...model.oidc }
+    oidc: {
+      issuer: model.oidc.issuerUri,
+      clientId: model.oidc.clientId,
+      clientSecret: model.oidc.clientSecret,
+      redirectUri: model.oidc.redirectUri,
+      groupsClaim: model.oidc.rolesClaim
+    }
   }
 }
 
@@ -218,14 +297,30 @@ async function load() {
   loading.value = true
   try {
     const { data } = await apiClient.get('/settings/eauth')
-    const incoming = data as Partial<ExternalAuthSettings>
-    // верхнеуровневые поля
-    if (typeof incoming.enabled === 'boolean') model.enabled = incoming.enabled
-    if (incoming.provider) model.provider = incoming.provider as ExternalAuthSettings['provider']
-    // вложенные объекты: мержим поверх дефолтов, игнорируя null
+    const incoming = data as AuthSettingsApiResponse
+
+    model.enabled = !!incoming.provider
+    if (incoming.provider) model.provider = incoming.provider
     if (incoming.ad) model.ad = { ...model.ad, ...incoming.ad }
-    if (incoming.ldap) model.ldap = { ...model.ldap, ...incoming.ldap }
-    if (incoming.oidc) model.oidc = { ...model.oidc, ...incoming.oidc }
+    if (incoming.ldap) {
+      model.ldap = {
+        ...model.ldap,
+        url: incoming.ldap.url ?? model.ldap.url,
+        baseDn: incoming.ldap.baseDn ?? model.ldap.baseDn,
+        userSearchFilter: incoming.ldap.userSearchFilter ?? model.ldap.userSearchFilter,
+        startTLS: incoming.ldap.startTls ?? model.ldap.startTLS
+      }
+    }
+    if (incoming.oidc) {
+      model.oidc = {
+        ...model.oidc,
+        issuerUri: incoming.oidc.issuer ?? model.oidc.issuerUri,
+        clientId: incoming.oidc.clientId ?? model.oidc.clientId,
+        clientSecret: incoming.oidc.clientSecret ?? model.oidc.clientSecret,
+        redirectUri: incoming.oidc.redirectUri ?? model.oidc.redirectUri,
+        rolesClaim: incoming.oidc.groupsClaim ?? model.oidc.rolesClaim
+      }
+    }
 
     oidcScopes.value = (model.oidc?.scopes || []).join(', ')
     adUrlsText.value = (model.ad.urls || []).join('\n')
@@ -235,6 +330,20 @@ async function load() {
     $q.notify({ type: 'warning', message: 'Не удалось загрузить настройки' })
   } finally {
     loading.value = false
+  }
+}
+
+async function loadPublicBasicUrl() {
+  publicBasicUrlLoading.value = true
+  try {
+    const { data } = await apiClient.get('/settings/public_basic_url')
+    publicBasicUrlModel.value = typeof data?.value === 'string' ? data.value : ''
+  } catch {
+    publicBasicUrlStatusMsg.value = 'Не удалось загрузить PUBLIC_BASIC_URL'
+    publicBasicUrlStatusType.value = 'warning'
+    $q.notify({ type: 'warning', message: 'Не удалось загрузить PUBLIC_BASIC_URL' })
+  } finally {
+    publicBasicUrlLoading.value = false
   }
 }
 
@@ -253,6 +362,23 @@ async function onSave() {
     $q.notify({ type: 'negative', message: msg })
   } finally {
     loading.value = false
+  }
+}
+
+async function onSavePublicBasicUrl() {
+  publicBasicUrlLoading.value = true
+  try {
+    await apiClient.put('/settings/public_basic_url', { value: publicBasicUrlModel.value })
+    publicBasicUrlStatusMsg.value = 'PUBLIC_BASIC_URL сохранен'
+    publicBasicUrlStatusType.value = 'positive'
+    $q.notify({ type: 'positive', message: 'PUBLIC_BASIC_URL сохранен' })
+  } catch (err: unknown) {
+    const msg = getErrorMessage(err)
+    publicBasicUrlStatusMsg.value = msg
+    publicBasicUrlStatusType.value = 'negative'
+    $q.notify({ type: 'negative', message: msg })
+  } finally {
+    publicBasicUrlLoading.value = false
   }
 }
 
@@ -279,5 +405,12 @@ function onCancel() {
   load()
 }
 
-onMounted(load)
+function onCancelPublicBasicUrl() {
+  loadPublicBasicUrl()
+}
+
+onMounted(() => {
+  load()
+  loadPublicBasicUrl()
+})
 </script>
