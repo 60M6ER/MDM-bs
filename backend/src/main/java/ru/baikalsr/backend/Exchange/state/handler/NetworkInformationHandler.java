@@ -4,10 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.baikalsr.backend.Device.entity.DeviceState;
 import ru.baikalsr.backend.Device.enums.NetworkTypes;
 import ru.baikalsr.backend.Device.enums.StateKey;
-import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
+import ru.baikalsr.backend.Device.service.DeviceStateService;
 import ru.baikalsr.backend.Exchange.dto.NetworkInformationDTO;
 import ru.baikalsr.backend.Exchange.state.StateHandler;
 
@@ -17,7 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 class NetworkInformationHandler implements StateHandler<NetworkInformationDTO> {
-    private final DeviceStateRepository repo; // JPA/DAO куда пишем
+    private final DeviceStateService deviceStateService;
     public StateKey key() { return StateKey.NETWORK_INFORMATION; }
     public Class<NetworkInformationDTO> type() { return NetworkInformationDTO.class; }
 
@@ -27,13 +26,10 @@ class NetworkInformationHandler implements StateHandler<NetworkInformationDTO> {
         if (dto.typeNetwork() == NetworkTypes.WIFI && dto.wifiSsid().isBlank()) {
             log.warn("Wifi ssid was not set. device-{} ssid:{}", deviceId, dto.wifiSsid());
         } else {
-            DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
-                    .orElse(new DeviceState(UUID.fromString(deviceId)));
-
-            deviceState.setNetworkType(dto.typeNetwork());
-            deviceState.setWifiSsid(dto.wifiSsid());
-
-            repo.save(deviceState);
+            deviceStateService.upsertByDeviceId(UUID.fromString(deviceId), state -> {
+                state.setNetworkType(dto.typeNetwork());
+                state.setWifiSsid(dto.wifiSsid());
+            });
         }
     }
 }

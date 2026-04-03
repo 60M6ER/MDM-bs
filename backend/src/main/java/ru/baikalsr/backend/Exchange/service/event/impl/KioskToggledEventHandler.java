@@ -30,13 +30,13 @@ public class KioskToggledEventHandler implements EventHandler<BooleanEventDto> {
 
     @Override
     public void apply(Device device, BooleanEventDto payload, long occurredAtMs) {
-        log.info("Handle SOME_EVENT from device {} at {}: {}", device.getId(), occurredAtMs, payload);
         DeviceEvents deviceEvent;
         if (payload.value()) {
             deviceEvent = DeviceEvents.KIOSK_MODE_TOGGLED_ON;
         } else {
             deviceEvent = DeviceEvents.KIOSK_MODE_TOGGLED_OFF;
         }
+        log.info("Handle {} from device {} at {}", deviceEvent, device.getId(), occurredAtMs);
         deviceEventService.append(device, deviceEvent, Instant.ofEpochMilli(occurredAtMs));
     }
 }

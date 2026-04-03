@@ -9,9 +9,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import ru.baikalsr.backend.Applications.dto.ApplicationAssignCurrentReleaseRequest;
 import ru.baikalsr.backend.Applications.dto.ApplicationCreateRequest;
+import ru.baikalsr.backend.Applications.dto.ApplicationCurrentVersionDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationDetailsDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationListItemDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationReleaseDownloadLinkDto;
@@ -25,6 +27,9 @@ import ru.baikalsr.backend.Applications.mapper.ArtifactReleaseMapper;
 import ru.baikalsr.backend.Applications.repository.ArtifactAppRepository;
 import ru.baikalsr.backend.Applications.repository.ArtifactCurrentReleaseRepository;
 import ru.baikalsr.backend.Applications.repository.ArtifactReleaseRepository;
+import ru.baikalsr.backend.Setting.dto.PublicBasicUrlCfg;
+import ru.baikalsr.backend.Setting.enums.SettingGroup;
+import ru.baikalsr.backend.Setting.service.SettingsService;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -41,6 +46,7 @@ public class ApplicationsService {
     private final ArtifactCurrentReleaseRepository artifactCurrentReleaseRepository;
     private final ApplicationsMapper applicationsMapper;
     private final ArtifactReleaseMapper artifactReleaseMapper;
+    private final SettingsService settingsService;
     private final EntityManager entityManager;
 
     /**
@@ -244,6 +250,61 @@ public class ApplicationsService {
     }
 
     /**
+     * Возвращает публичную информацию о текущей актуальной версии приложения по packageName.
+     * Для внешних OTA-сценариев доступны только активные приложения.
+     *
+     * @param packageName packageName Android-приложения
+     * @return DTO с метаданными текущего релиза без внутренних идентификаторов backend
+     */
+    public ApplicationCurrentVersionDto getCurrentVersionByPackageName(String packageName) {
+        ArtifactRelease currentRelease = getCurrentReleaseEntityByPackageName(packageName);
+        return new ApplicationCurrentVersionDto(
+                currentRelease.getApp().getPackageName(),
+                currentRelease.getVersionCode(),
+                currentRelease.getVersionName(),
+                currentRelease.getSha256(),
+                currentRelease.getSizeBytes(),
+                currentRelease.getUploadedAt()
+        );
+    }
+
+    /**
+     * Возвращает абсолютную публичную ссылку на скачивание текущего релиза по packageName.
+     *
+     * @param packageName packageName Android-приложения
+     * @return DTO со ссылкой на скачивание текущего релиза
+     */
+    public ApplicationReleaseDownloadLinkDto getCurrentReleaseDownloadLinkByPackageName(String packageName) {
+        ArtifactRelease currentRelease = getCurrentReleaseEntityByPackageName(packageName);
+        return new ApplicationReleaseDownloadLinkDto(
+                currentRelease.getId(),
+                buildPublicReleaseDownloadUrl(currentRelease.getId())
+        );
+    }
+
+    /**
+     * Возвращает абсолютную публичную ссылку на скачивание конкретного релиза по packageName и versionCode.
+     * Для внешних OTA-сценариев доступны только активные приложения.
+     *
+     * @param packageName packageName Android-приложения
+     * @param versionCode versionCode нужной сборки
+     * @return DTO со ссылкой на скачивание указанного релиза
+     */
+    public ApplicationReleaseDownloadLinkDto getReleaseDownloadLinkByPackageNameAndVersionCode(
+            String packageName,
+            Integer versionCode
+    ) {
+        ArtifactApp app = getActiveApplicationByPackageNameOrThrow(packageName);
+        ArtifactRelease release = artifactReleaseRepository.findByApp_IdAndVersionCode(app.getId(), versionCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_RELEASE_NOT_FOUND"));
+
+        return new ApplicationReleaseDownloadLinkDto(
+                release.getId(),
+                buildPublicReleaseDownloadUrl(release.getId())
+        );
+    }
+
+    /**
      * Формирует начальную системную запись приложения для последующего сохранения в БД.
      * Здесь задаются стартовые метаданные, с которыми приложение появляется в каталоге.
      *
@@ -277,12 +338,39 @@ public class ApplicationsService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_NOT_FOUND"));
     }
 
+    private ArtifactApp getActiveApplicationByPackageNameOrThrow(String packageName) {
+        return artifactAppRepository.findByPackageNameAndActiveTrue(packageName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_NOT_FOUND"));
+    }
+
     private ArtifactRelease getReleaseOrThrow(Long releaseId) {
         return artifactReleaseRepository.findById(releaseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_RELEASE_NOT_FOUND"));
     }
 
+    private ArtifactRelease getCurrentReleaseEntityByPackageName(String packageName) {
+        ArtifactApp app = getActiveApplicationByPackageNameOrThrow(packageName);
+        return artifactCurrentReleaseRepository.findByAppId(app.getId())
+                .map(ArtifactCurrentRelease::getRelease)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_CURRENT_RELEASE_NOT_FOUND"));
+    }
+
     private String buildReleaseDownloadUrl(Long releaseId) {
         return "/api/v1/applications/releases/" + releaseId + "/file";
+    }
+
+    private String buildPublicReleaseDownloadUrl(Long releaseId) {
+        PublicBasicUrlCfg publicBasicUrlCfg = settingsService.get(SettingGroup.PUBLIC_BASIC_URL, PublicBasicUrlCfg.class);
+        if (publicBasicUrlCfg == null || !StringUtils.hasText(publicBasicUrlCfg.value())) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "PUBLIC_BASIC_URL_NOT_CONFIGURED");
+        }
+
+        return joinUrl(publicBasicUrlCfg.value(), buildReleaseDownloadUrl(releaseId));
+    }
+
+    private String joinUrl(String baseUrl, String relativePath) {
+        String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String normalizedPath = relativePath.startsWith("/") ? relativePath : "/" + relativePath;
+        return normalizedBase + normalizedPath;
     }
 }

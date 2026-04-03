@@ -76,7 +76,27 @@ public class DeviceService {
     public DeviceDetailsDto getDetails(UUID deviceId) {
         DeviceDetailsCurrent v = deviceDetailsCurrentRepository.findById(deviceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "DEVICE_NOT_FOUND"));
-        return deviceDetailsMapper.toDetails(v);
+        DeviceDetailsDto details = deviceDetailsMapper.toDetails(v);
+        return details.withOnline(deviceLastSeenService.isOnline(deviceId));
+    }
+
+    public DeviceOnlineStatusDto getOnlineStatus(UUID deviceId) {
+        if (!deviceRepository.existsById(deviceId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "DEVICE_NOT_FOUND");
+        }
+        return new DeviceOnlineStatusDto(deviceId, deviceLastSeenService.isOnline(deviceId));
+    }
+
+    public List<DeviceOnlineStatusDto> getOnlineStatuses(List<UUID> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Boolean> statuses = deviceLastSeenService.getOnlineStatuses(deviceIds);
+        return deviceIds.stream()
+                .distinct()
+                .map(deviceId -> new DeviceOnlineStatusDto(deviceId, statuses.getOrDefault(deviceId, false)))
+                .toList();
     }
 
     @Transactional
@@ -196,6 +216,7 @@ public class DeviceService {
 
     @Transactional
     public void deleteDevice(UUID deviceId) {
+        log.info("Deleting device {}", deviceId);
         deviceRepository.deleteById(deviceId);
     }
 
@@ -221,6 +242,7 @@ public class DeviceService {
         Device device = null;
         // Проверяем созданные в бд устройства. если по серийному номеру будет найдено устройство то заменим deviceId
         device = deviceRepository.findBySerialNumber(req.serial()).orElse(new Device());
+        boolean reRegistered = device.getId() != null;
 
         if (device.getId() == null){
             device.setId(req.preDeviceId());              // фиксируем preDeviceId как окончательный deviceId
@@ -249,8 +271,8 @@ public class DeviceService {
         deviceSecretRepository.save(deviceSecret);
 
         // 5) Инициализация состояния
-        DeviceState deviceState = deviceStateRepository.findByDevice_Id(device.getId()).orElse(new DeviceState());
-        deviceState.setDevice(device);
+        DeviceState deviceState = deviceStateRepository.findByDeviceId(device.getId())
+                .orElse(new DeviceState(device.getId()));
         deviceState.setAppVersion(req.appVersion());
         deviceState.setOsVersion(req.osVersion());
         deviceState.setUpdatedAt(now);
@@ -263,7 +285,17 @@ public class DeviceService {
                 .build();
         deviceEventRepository.save(registeredEvent);
 
-        deviceLastSeenService.updateLastSeenIpAsync(device.getId(), httpRequest);
+        deviceLastSeenService.heartbeat(device.getId(), httpRequest.getRemoteAddr());
+
+        log.info(
+                "Device {} registered, serial={}, manufacturer={}, model={}, reRegistered={}, ip={}",
+                device.getId(),
+                req.serial(),
+                req.manufacturer(),
+                req.model(),
+                reRegistered,
+                httpRequest.getRemoteAddr()
+        );
 
         // 6) Ответ — секрет возвращаем один раз
         return new DeviceRegisterResponse(device.getId(), secretPlain, 0);
@@ -290,6 +322,7 @@ public class DeviceService {
         );
 
         exchangeService.sendCommand(deviceId.toString(), command);
+        log.info("Requested SET_KIOSK_MODE for device {}, enabled={}", deviceId, enabled);
     }
 
     public boolean matchesSecret(Device device, String secretHeader) {

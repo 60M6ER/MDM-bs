@@ -20,7 +20,7 @@
       </q-tabs>
     </q-header>
 
-    <q-page-container>
+    <q-page-container :class="{ 'workspace-page-container': isWorkspaceRoute }">
       <router-view />
     </q-page-container>
 
@@ -51,8 +51,11 @@
 import ServerDownOverlay from 'src/components/ServerDownOverlay.vue'
 import { serverHealth } from 'src/services/serverHealth'
 import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const serverDown = computed(() => serverHealth.isAlive.value === false)
+const isWorkspaceRoute = computed(() => route.path === '/devices')
 
 onMounted(() => {
   serverHealth.start()
@@ -67,5 +70,12 @@ onMounted(() => {
   opacity: .6;
   pointer-events: none;
   user-select: none;
+}
+
+.workspace-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

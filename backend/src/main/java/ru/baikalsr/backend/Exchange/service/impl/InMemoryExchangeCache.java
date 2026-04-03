@@ -24,8 +24,6 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
     // Идемпотентность: deviceId|requestId -> expireAtMs
     private final ConcurrentMap<String, Long> seenReqUntil = new ConcurrentHashMap<>();
 
-    // Последнее «состояние канала» (для отладки/админки)
-    private final ConcurrentMap<String, Long> heartbeats = new ConcurrentHashMap<>();
     // очередь репортов от устройств
     private final Deque<DeviceReport> reportQueue = new ConcurrentLinkedDeque<>();
 
@@ -168,11 +166,6 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
         }
     }
 
-    @Override
-    public void touchHeartbeat(String deviceId, long nowMs) {
-        heartbeats.put(deviceId, nowMs);
-    }
-
     // ==== Вспомогательное ====
 
     private CommandDto withCreatedAt(CommandDto c) {
@@ -204,12 +197,6 @@ public class InMemoryExchangeCache implements ExchangeCache, DisposableBean {
             if (e.getValue() < now) seenReqUntil.remove(e.getKey(), e.getValue());
         }
         cleanupReportsAndAcks();
-
-        // чистим heartbeat, если очень старые (для экономии памяти)
-        long hbCut = now - TimeUnit.SECONDS.toMillis(props.getHeartbeatTtlSec());
-        for (var e : heartbeats.entrySet()) {
-            if (e.getValue() < hbCut) heartbeats.remove(e.getKey(), e.getValue());
-        }
 
         // срезаем протухшие команды в головах очередей
         for (var entry : cmdQueues.entrySet()) {

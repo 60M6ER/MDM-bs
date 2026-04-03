@@ -105,6 +105,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/health_check").permitAll()
                         .requestMatchers("/api/v1/devices/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/applications/releases/*/file").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/applications/package/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(

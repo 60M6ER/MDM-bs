@@ -4,10 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.baikalsr.backend.Device.entity.DeviceState;
-import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
 import ru.baikalsr.backend.Exchange.dto.BatteryInformationDTO;
 import ru.baikalsr.backend.Device.enums.StateKey;
+import ru.baikalsr.backend.Device.service.DeviceStateService;
 import ru.baikalsr.backend.Exchange.state.StateHandler;
 
 import java.util.UUID;
@@ -16,7 +15,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 class BatteryInformationHandler implements StateHandler<BatteryInformationDTO> {
-    private final DeviceStateRepository repo; // JPA/DAO куда пишем
+    private final DeviceStateService deviceStateService;
     public StateKey key() { return StateKey.BATTERY_INFORMATION; }
     public Class<BatteryInformationDTO> type() { return BatteryInformationDTO.class; }
 
@@ -25,14 +24,12 @@ class BatteryInformationHandler implements StateHandler<BatteryInformationDTO> {
         if (dto.percent() < 0 || dto.percent() > 100) {
             log.warn("Battery percent value out of range {} - [{}, {}]", dto.percent(), 0, 100);
         } else {
-            DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
-                    .orElse(new DeviceState(UUID.fromString(deviceId)));
-
-            deviceState.setCharging(dto.isCharging());
-            deviceState.setBatteryLevel(dto.percent());
-            deviceState.setBatteryVoltage(dto.voltage());
-            deviceState.setBatteryTemperature(dto.temperature());
-            repo.save(deviceState);
+            deviceStateService.upsertByDeviceId(UUID.fromString(deviceId), state -> {
+                state.setCharging(dto.isCharging());
+                state.setBatteryLevel(dto.percent());
+                state.setBatteryVoltage(dto.voltage());
+                state.setBatteryTemperature(dto.temperature());
+            });
         }
     }
 }

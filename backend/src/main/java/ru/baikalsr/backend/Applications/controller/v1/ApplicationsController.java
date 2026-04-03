@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.baikalsr.backend.Applications.dto.ApplicationAssignCurrentReleaseRequest;
 import ru.baikalsr.backend.Applications.dto.ApplicationCreateRequest;
+import ru.baikalsr.backend.Applications.dto.ApplicationCurrentVersionDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationDetailsDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationListItemDto;
 import ru.baikalsr.backend.Applications.dto.ApplicationReleaseDownloadLinkDto;
@@ -121,5 +122,35 @@ public class ApplicationsController {
     )
     public ApplicationReleaseDownloadLinkDto getCurrentReleaseDownloadLinkByKey(@PathVariable ApplicationKey key) {
         return applicationsService.getCurrentReleaseDownloadLinkByKey(key);
+    }
+
+    @GetMapping("/package/{packageName}/current-release")
+    @Operation(
+            summary = "Получить текущую актуальную версию по packageName",
+            description = "Возвращает публичные метаданные текущего релиза активного приложения для OTA-проверки версии."
+    )
+    public ApplicationCurrentVersionDto getCurrentVersionByPackageName(@PathVariable String packageName) {
+        return applicationsService.getCurrentVersionByPackageName(packageName);
+    }
+
+    @GetMapping("/package/{packageName}/current-release/download-link")
+    @Operation(
+            summary = "Получить ссылку на скачивание текущего релиза по packageName",
+            description = "Возвращает абсолютную публичную ссылку на скачивание текущего релиза активного приложения."
+    )
+    public ApplicationReleaseDownloadLinkDto getCurrentReleaseDownloadLinkByPackageName(@PathVariable String packageName) {
+        return applicationsService.getCurrentReleaseDownloadLinkByPackageName(packageName);
+    }
+
+    @GetMapping("/package/{packageName}/releases/{versionCode}/download-link")
+    @Operation(
+            summary = "Получить ссылку на скачивание релиза по packageName и versionCode",
+            description = "Возвращает абсолютную публичную ссылку на скачивание указанной сборки активного приложения."
+    )
+    public ApplicationReleaseDownloadLinkDto getReleaseDownloadLinkByPackageNameAndVersionCode(
+            @PathVariable String packageName,
+            @PathVariable Integer versionCode
+    ) {
+        return applicationsService.getReleaseDownloadLinkByPackageNameAndVersionCode(packageName, versionCode);
     }
 }

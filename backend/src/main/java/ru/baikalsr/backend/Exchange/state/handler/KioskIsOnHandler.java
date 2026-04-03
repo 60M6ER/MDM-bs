@@ -4,9 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import ru.baikalsr.backend.Device.entity.DeviceState;
-import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
 import ru.baikalsr.backend.Device.enums.StateKey;
+import ru.baikalsr.backend.Device.service.DeviceStateService;
 import ru.baikalsr.backend.Exchange.state.StateHandler;
 
 import java.util.UUID;
@@ -15,16 +14,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 class KioskIsOnHandler implements StateHandler<Boolean> {
-    private final DeviceStateRepository repo; // JPA/DAO куда пишем
+    private final DeviceStateService deviceStateService;
     public StateKey key() { return StateKey.KIOSK_IS_ON; }
     public Class<Boolean> type() { return Boolean.class; }
 
     @Transactional
     public void apply(String deviceId, Boolean value, long at) {
-        DeviceState deviceState = repo.findByDevice_Id(UUID.fromString(deviceId))
-                .orElse(new DeviceState());
-
-        deviceState.setKioskIsOn(value);
-        repo.save(deviceState);
+        deviceStateService.upsertByDeviceId(UUID.fromString(deviceId), state -> state.setKioskIsOn(value));
     }
 }

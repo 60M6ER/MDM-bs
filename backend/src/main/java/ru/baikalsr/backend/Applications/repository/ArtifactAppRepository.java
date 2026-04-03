@@ -12,6 +12,8 @@ public interface ArtifactAppRepository extends JpaRepository<ArtifactApp, Long> 
 
     Optional<ArtifactApp> findByPackageName(String packageName);
 
+    Optional<ArtifactApp> findByPackageNameAndActiveTrue(String packageName);
+
     boolean existsByKey(String key);
 
     List<ArtifactApp> findByActiveTrueOrderByNameAsc();

@@ -58,6 +58,26 @@ public class DeviceController {
         return deviceService.getDetails(id);
     }
 
+    @GetMapping("/{id}/online-status")
+    @Operation(
+            summary = "Получить online/offline для одного устройства",
+            description = "Возвращает текущий online/offline признак для указанного устройства."
+    )
+    public DeviceOnlineStatusDto getDeviceOnlineStatus(@PathVariable("id") UUID id) {
+        return deviceService.getOnlineStatus(id);
+    }
+
+    @PostMapping("/online-statuses")
+    @Operation(
+            summary = "Получить online/offline для списка устройств",
+            description = "Возвращает текущие online/offline признаки для переданного списка deviceId."
+    )
+    public java.util.List<DeviceOnlineStatusDto> getDeviceOnlineStatuses(
+            @RequestBody DeviceOnlineStatusBatchRequest request
+    ) {
+        return deviceService.getOnlineStatuses(request.deviceIds());
+    }
+
     @PostMapping("/preprovision")
     @Operation(
             summary = "Создать предрегистрацию устройства (QR)",

@@ -15,6 +15,13 @@
         :active="d.deviceId === selectedId"
         @click="$emit('select', d.deviceId)"
       >
+        <q-item-section side>
+          <span
+            class="status-dot"
+            :class="onlineStatuses[d.deviceId] ? 'status-dot--online' : 'status-dot--offline'"
+          />
+        </q-item-section>
+
         <q-item-section>
           <q-item-label class="text-weight-medium">
             {{ d.serialNumber || shortId(d.deviceId) }}
@@ -49,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
 import { apiClient } from 'src/services/apiClient.js'
 import PreprovisionDialog from 'src/components/devices/PreprovisionDialog.vue'
@@ -65,6 +72,9 @@ const loadingList = ref(false)
 const uiPage = ref(1)
 const size = ref(30)
 const page = ref({ content: [], page: 0, size: 30, totalElements: 0, totalPages: 0 })
+const onlineStatuses = ref({})
+
+let onlinePollTimer = null
 
 function shortId(uuid) { return String(uuid).split('-')[0] }
 
@@ -73,12 +83,44 @@ async function loadList(p = 0) {
   try {
     const resp = await apiClient.get('/devices', { params: { page: p, size: size.value, sort: 'createdAt,desc' } })
     page.value = resp.data
+    await loadOnlineStatuses()
   } finally {
     loadingList.value = false
   }
 }
 function handlePageChange(newUiPage) { loadList(newUiPage - 1) }
 function reload() { loadList(uiPage.value - 1) }
+
+async function loadOnlineStatuses() {
+  const deviceIds = (page.value.content || []).map(device => device.deviceId).filter(Boolean)
+  if (deviceIds.length === 0) {
+    onlineStatuses.value = {}
+    return
+  }
+
+  const { data } = await apiClient.post('/devices/online-statuses', { deviceIds })
+  const nextStatuses = {}
+  for (const item of Array.isArray(data) ? data : []) {
+    nextStatuses[item.deviceId] = Boolean(item.online)
+  }
+  onlineStatuses.value = nextStatuses
+}
+
+function startOnlinePolling() {
+  stopOnlinePolling()
+  onlinePollTimer = setInterval(() => {
+    if (!loadingList.value) {
+      loadOnlineStatuses()
+    }
+  }, 10000)
+}
+
+function stopOnlinePolling() {
+  if (onlinePollTimer) {
+    clearInterval(onlinePollTimer)
+    onlinePollTimer = null
+  }
+}
 
 function confirmDelete(device) {
   const title = device.serialNumber || shortId(device.deviceId)
@@ -104,5 +146,30 @@ async function deleteDevice(deviceId) {
   }
 }
 
-onMounted(() => loadList(0))
+onMounted(() => {
+  loadList(0)
+  startOnlinePolling()
+})
+
+onBeforeUnmount(() => {
+  stopOnlinePolling()
+})
 </script>
+
+<style scoped>
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.status-dot--online {
+  background: #2e7d32;
+}
+
+.status-dot--offline {
+  background: #c62828;
+}
+</style>

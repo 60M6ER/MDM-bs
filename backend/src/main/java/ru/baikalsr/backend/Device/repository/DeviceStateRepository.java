@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import ru.baikalsr.backend.Device.entity.DeviceState;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,7 +12,7 @@ import java.util.UUID;
 public interface DeviceStateRepository extends JpaRepository<DeviceState, UUID> {
 
     // текущее состояние по ID устройства
-    Optional<DeviceState> findByDevice_Id(UUID deviceId);
+    Optional<DeviceState> findByDeviceId(UUID deviceId);
 
-    boolean existsByDevice_Id(UUID deviceId);
+    List<DeviceState> findAllByOnlineTrueAndLastSeenAtIsNotNull();
 }

@@ -1,21 +1,16 @@
 package ru.baikalsr.backend.Device.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationListener;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import ru.baikalsr.backend.Device.entity.Device;
 import ru.baikalsr.backend.Device.entity.DeviceEvent;
 import ru.baikalsr.backend.Device.enums.DeviceEvents;
-import ru.baikalsr.backend.Device.event.DeviceRegisteredEvent;
 import ru.baikalsr.backend.Device.repository.DeviceEventRepository;
-import ru.baikalsr.backend.Setting.event.SettingsChangedEvent;
 
-import java.awt.desktop.AppForegroundListener;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +18,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class DeviceEventService {
 
     private final DeviceEventRepository deviceEventRepository;
@@ -46,7 +42,9 @@ public class DeviceEventService {
                 .event(event)
                 .occurredAt(occurredAt != null ? occurredAt : Instant.now())
                 .build();
-        return deviceEventRepository.save(e);
+        DeviceEvent saved = deviceEventRepository.save(e);
+        log.info("Recorded device event {}, deviceId={}, occurredAt={}", event, device.getId(), saved.getOccurredAt());
+        return saved;
     }
 
     @Transactional

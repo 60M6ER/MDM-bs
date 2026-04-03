@@ -1,7 +1,21 @@
 package ru.baikalsr.backend.Device.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.domain.Persistable;
 import ru.baikalsr.backend.Device.enums.NetworkTypes;
 
@@ -16,23 +30,13 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = "device")
+@ToString
 public class DeviceState implements Persistable<UUID> {
 
-    // PK = FK → тот же столбец device_id
     @Id
     @Column(name = "device_id", nullable = false)
     @EqualsAndHashCode.Include
     private UUID deviceId;
-
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId // ← говорит, что PK этого entity берётся из FK на Device
-    @JoinColumn(
-            name = "device_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_device_state_device")
-    )
-    private Device device;
 
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
@@ -84,6 +88,7 @@ public class DeviceState implements Persistable<UUID> {
     private Instant updatedAt;
 
     @Transient
+    @Builder.Default
     private boolean _isNew = false;
 
     @Override
@@ -94,6 +99,7 @@ public class DeviceState implements Persistable<UUID> {
 
     public DeviceState(UUID deviceId) {
         this.deviceId = deviceId;
+        this.markNew();
     }
 
     /** Вызывай это перед сохранением нового устройства */
@@ -110,13 +116,5 @@ public class DeviceState implements Persistable<UUID> {
     @PostPersist
     void markNotNew() {
         this._isNew = false;
-    }
-
-    public void setDevice(Device device) {
-        this.device = device;
-        if (this.deviceId == null) {
-            this.markNew();
-        }
-        this.deviceId = device.getId();
     }
 }

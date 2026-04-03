@@ -3,7 +3,6 @@ package ru.baikalsr.backend.Device.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.baikalsr.backend.Device.entity.Device;
 import ru.baikalsr.backend.Device.entity.DeviceState;
 import ru.baikalsr.backend.Device.repository.DeviceStateRepository;
 
@@ -28,7 +27,11 @@ public class DeviceStateService {
     }
 
     public Optional<DeviceState> findByDeviceId(UUID deviceId) {
-        return deviceStateRepository.findByDevice_Id(deviceId);
+        return deviceStateRepository.findByDeviceId(deviceId);
+    }
+
+    public List<DeviceState> findAllOnlineWithLastSeen() {
+        return deviceStateRepository.findAllByOnlineTrueAndLastSeenAtIsNotNull();
     }
 
     @Transactional
@@ -36,15 +39,14 @@ public class DeviceStateService {
         return deviceStateRepository.save(state);
     }
 
-    /**
-     * Простая upsert-логика: если у устройства есть запись состояния — обновим ключевые поля,
-     * иначе создадим новую. Можно расширить под конкретные поля.
-     */
     @Transactional
-    public DeviceState upsertForDevice(Device device, java.util.function.Consumer<DeviceState> mutator) {
-        var state = deviceStateRepository.findByDevice_Id(device.getId()).orElseGet(() -> DeviceState.builder()
-                .device(device)
-                .build());
+    public DeviceState upsertByDeviceId(UUID deviceId, java.util.function.Consumer<DeviceState> mutator) {
+        var state = deviceStateRepository.findByDeviceId(deviceId)
+                .orElseGet(() -> new DeviceState(deviceId));
+        return mutateAndSave(state, mutator);
+    }
+
+    private DeviceState mutateAndSave(DeviceState state, java.util.function.Consumer<DeviceState> mutator) {
         mutator.accept(state);
         state.setUpdatedAt(Instant.now());
         return deviceStateRepository.save(state);
