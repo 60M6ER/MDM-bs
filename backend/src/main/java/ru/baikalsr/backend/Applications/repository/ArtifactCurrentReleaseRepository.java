@@ -12,4 +12,6 @@ public interface ArtifactCurrentReleaseRepository extends JpaRepository<Artifact
     Optional<ArtifactCurrentRelease> findByRelease_Id(Long releaseId);
 
     Optional<ArtifactCurrentRelease> findByApp_Key(String appKey);
+
+    void deleteByAppId(Long appId);
 }

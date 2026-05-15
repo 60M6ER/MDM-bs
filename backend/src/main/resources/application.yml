@@ -4,6 +4,17 @@ spring:
       max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:256MB}
       max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:256MB}
 
+logging:
+  file:
+    name: ${LOGGING_FILE_NAME:./logs/mdm-backend.log}
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOGGING_ROLLING_FILE_NAME_PATTERN:./logs/mdm-backend.%d{yyyy-MM-dd}.%i.log.gz}
+      max-file-size: ${LOGGING_ROLLING_MAX_FILE_SIZE:20MB}
+      max-history: ${LOGGING_ROLLING_MAX_HISTORY:7}
+      total-size-cap: ${LOGGING_ROLLING_TOTAL_SIZE_CAP:1GB}
+      clean-history-on-start: true
+
 app:
   artifact-storage:
     root-path: ./storage/artifacts

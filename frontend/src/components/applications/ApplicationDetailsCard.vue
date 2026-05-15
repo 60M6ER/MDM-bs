@@ -3,6 +3,17 @@
     <q-card-section class="row items-center">
       <div class="text-subtitle1 text-weight-medium">Карточка приложения</div>
       <q-space />
+      <q-btn
+        v-if="details?.canReset"
+        flat
+        round
+        dense
+        color="negative"
+        icon="close"
+        :disable="loading || resettingApplication"
+        :loading="resettingApplication"
+        @click="confirmResetApplication"
+      />
       <q-btn flat round dense icon="refresh" :loading="loading" @click="fetchDetails" />
     </q-card-section>
 
@@ -143,6 +154,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { notifyApiError } from 'src/services/apiErrors.js'
 import { apiClient } from 'src/services/apiClient.js'
 
 const props = defineProps({
@@ -158,6 +170,7 @@ const currentRelease = ref(null)
 const releaseDialogOpen = ref(false)
 const releaseDialogLoading = ref(false)
 const assigningRelease = ref(false)
+const resettingApplication = ref(false)
 const releaseSearch = ref('')
 const releaseUiPage = ref(1)
 const releasePage = ref({
@@ -182,10 +195,6 @@ function formatDate(value) {
   } catch {
     return String(value || '')
   }
-}
-
-function getErrorMessage(err) {
-  return err?.response?.data?.message || err?.message || 'Произошла ошибка'
 }
 
 async function fetchCurrentRelease() {
@@ -213,6 +222,49 @@ async function fetchDetails() {
     details.value = detailsResponse.data || null
   } finally {
     loading.value = false
+  }
+}
+
+async function confirmResetApplication() {
+  if (!details.value?.id || resettingApplication.value) {
+    return
+  }
+
+  const confirmed = await new Promise((resolve) => {
+    $q.dialog({
+      title: 'Обнулить приложение?',
+      message: 'Будут удалены все релизы, package name и текущая версия. Карточка приложения останется.',
+      persistent: true,
+      ok: {
+        color: 'negative',
+        label: 'Обнулить'
+      },
+      cancel: {
+        flat: true,
+        label: 'Отмена'
+      }
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false))
+  })
+
+  if (!confirmed) {
+    return
+  }
+
+  resettingApplication.value = true
+  try {
+    await apiClient.delete(`/applications/${props.applicationId}/reset`)
+    currentRelease.value = null
+    emit('current-release-updated', null)
+    emit('refresh-requested')
+    await fetchDetails()
+    $q.notify({ type: 'positive', message: 'Приложение обнулено' })
+  } catch (err) {
+    notifyApiError($q, err)
+  } finally {
+    resettingApplication.value = false
   }
 }
 
@@ -256,7 +308,7 @@ async function selectCurrentRelease(release) {
     releaseDialogOpen.value = false
     $q.notify({ type: 'positive', message: 'Текущий релиз обновлен' })
   } catch (err) {
-    $q.notify({ type: 'negative', message: getErrorMessage(err) })
+    notifyApiError($q, err)
   } finally {
     assigningRelease.value = false
   }

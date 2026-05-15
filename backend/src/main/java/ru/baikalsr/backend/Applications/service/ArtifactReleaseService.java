@@ -132,6 +132,12 @@ public class ArtifactReleaseService {
         ApkMetadata apkMetadata = apkMetadataExtractor.extract(file);
 
         if (artifactReleaseRepository.existsByApp_IdAndVersionCode(app.getId(), apkMetadata.versionCode())) {
+            log.warn(
+                    "Rejected application release creation: duplicate versionCode, appId={}, appKey={}, versionCode={}",
+                    app.getId(),
+                    app.getKey(),
+                    apkMetadata.versionCode()
+            );
             throw new ResponseStatusException(HttpStatus.CONFLICT, "APPLICATION_RELEASE_VERSION_ALREADY_EXISTS");
         }
 
@@ -203,6 +209,13 @@ public class ArtifactReleaseService {
             artifactAppRepository.findByPackageName(extractedPackageName)
                     .filter(existingApp -> !existingApp.getId().equals(app.getId()))
                     .ifPresent(existingApp -> {
+                        log.warn(
+                                "Rejected application release creation: package already assigned to another app, appId={}, appKey={}, packageName={}, existingAppId={}",
+                                app.getId(),
+                                app.getKey(),
+                                extractedPackageName,
+                                existingApp.getId()
+                        );
                         throw new ResponseStatusException(HttpStatus.CONFLICT, "APPLICATION_PACKAGE_ALREADY_EXISTS");
                     });
 
@@ -212,6 +225,13 @@ public class ArtifactReleaseService {
         }
 
         if (!app.getPackageName().equals(extractedPackageName)) {
+            log.warn(
+                    "Rejected application release creation: package mismatch, appId={}, appKey={}, expectedPackage={}, actualPackage={}",
+                    app.getId(),
+                    app.getKey(),
+                    app.getPackageName(),
+                    extractedPackageName
+            );
             throw new ResponseStatusException(HttpStatus.CONFLICT, "APPLICATION_RELEASE_PACKAGE_MISMATCH");
         }
     }

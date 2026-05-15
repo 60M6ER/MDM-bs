@@ -76,6 +76,16 @@ public class ApplicationsController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/reset")
+    @Operation(
+            summary = "Обнулить приложение",
+            description = "Удаляет все релизы приложения, сбрасывает packageName и признак активности, но оставляет саму карточку приложения."
+    )
+    public ResponseEntity<Void> resetApplication(@PathVariable Long id) {
+        applicationsService.resetApplication(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{id}/current-release")
     @Operation(
             summary = "Назначить текущий релиз приложения",

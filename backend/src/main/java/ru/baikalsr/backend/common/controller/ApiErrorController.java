@@ -5,10 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorController;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
@@ -23,7 +21,7 @@ public class ApiErrorController implements ErrorController {
         this.errorAttributes = errorAttributes;
     }
 
-    @GetMapping
+    @RequestMapping
     public Object handleError(HttpServletRequest request, HttpServletResponse response) {
         WebRequest webRequest = new ServletWebRequest(request);
 
@@ -54,7 +52,7 @@ public class ApiErrorController implements ErrorController {
         boolean wantsHtml = accept != null && accept.contains("text/html");
 
         if (wantsHtml) {
-            response.setStatus(HttpStatus.OK.value());
+            response.setStatus(200);
             return "forward:/index.html";
         }
 

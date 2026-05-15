@@ -34,7 +34,7 @@ spring:
 logging:
   level:
     ru.baikalsr.backend: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
 
 springdoc:
   api-docs:

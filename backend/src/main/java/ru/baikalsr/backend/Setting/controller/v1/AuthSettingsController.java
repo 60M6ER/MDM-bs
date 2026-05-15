@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.baikalsr.backend.Security.LdapUrlNormalizer;
 import ru.baikalsr.backend.Setting.dto.AuthSettingsCfg;
 import ru.baikalsr.backend.Setting.enums.SettingGroup;
 import ru.baikalsr.backend.Setting.service.SettingsService;
@@ -82,16 +83,17 @@ public class AuthSettingsController {
             if (urlStr == null || urlStr.isBlank()) {
                 return ResponseEntity.ok(TestResult.fail("Не задан URL для подключения (ad.urls или ldap.url)"));
             }
+            String normalizedUrl = LdapUrlNormalizer.normalize(urlStr);
 
             // URL не умеет ldap:// — заменяем схему для парсинга
-            String adjustedUrl = urlStr.startsWith("ldaps://")
-                    ? urlStr.replaceFirst("^ldaps://", "https://")
-                    : urlStr.replaceFirst("^ldap://", "http://");
+            String adjustedUrl = normalizedUrl.startsWith("ldaps://")
+                    ? normalizedUrl.replaceFirst("^ldaps://", "https://")
+                    : normalizedUrl.replaceFirst("^ldap://", "http://");
 
             URL u = new URL(adjustedUrl);
             String host = u.getHost();
             int port = u.getPort();
-            if (port < 0) port = urlStr.startsWith("ldaps://") ? 636 : 389;
+            if (port < 0) port = normalizedUrl.startsWith("ldaps://") ? 636 : 389;
 
             try (Socket s = new Socket()) {
                 s.connect(new InetSocketAddress(host, port), to);

@@ -8,5 +8,6 @@ public record ApplicationDetailsDto(
         String name,
         String packageName,
         boolean active,
-        Instant createdAt
+        Instant createdAt,
+        boolean canReset
 ) {}

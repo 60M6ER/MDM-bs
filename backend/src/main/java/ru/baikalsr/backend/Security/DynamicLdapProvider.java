@@ -81,9 +81,10 @@ public class DynamicLdapProvider implements AuthenticationProvider, ApplicationL
         if (lc == null || !StringUtils.hasText(lc.url())) {
             throw new IllegalArgumentException("LDAP.url must be set for provider=LDAP");
         }
+        String normalizedUrl = LdapUrlNormalizer.normalize(lc.url());
 
         LdapContextSource cs = new LdapContextSource();
-        cs.setUrl(lc.url());
+        cs.setUrl(normalizedUrl);
         if (StringUtils.hasText(lc.baseDn())) cs.setBase(lc.baseDn());
 
         // В данной версии мы не используем bind DN/password.
@@ -129,7 +130,10 @@ public class DynamicLdapProvider implements AuthenticationProvider, ApplicationL
         }
 
         // AD провайдер принимает domain и первый URL (список можно склеить в пробельную строку — JNDI по очереди попробует)
-        String urls = String.join(" ", ad.urls());
+        String urls = ad.urls().stream()
+                .map(LdapUrlNormalizer::normalize)
+                .reduce((left, right) -> left + " " + right)
+                .orElseThrow(() -> new IllegalArgumentException("AD settings must include urls"));
         var provider = new ActiveDirectoryLdapAuthenticationProvider(ad.domain(), urls);
 
         // convert sub-error codes to exceptions — удобнее диагностировать ошибки 49.xxx

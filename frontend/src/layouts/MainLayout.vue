@@ -32,30 +32,43 @@
           </q-avatar>
           <div>Title</div>
         </q-toolbar-title>
-        <a
-          href="/swagger-ui/index.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-white text-caption"
-          style="text-decoration: none;"
-        >
-          Документация API
-        </a>
+        <div class="row items-center q-gutter-md">
+          <a
+            href="/swagger-ui/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-white text-caption"
+            style="text-decoration: none;"
+          >
+            Документация API
+          </a>
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="white"
+            label="Логи"
+            @click="logsDialogOpen = true"
+          />
+        </div>
       </q-toolbar>
     </q-footer>
   </q-layout>
+  <LogsDialog v-model="logsDialogOpen" />
   <ServerDownOverlay />
 </template>
 
 <script setup lang="ts">
+import LogsDialog from 'src/components/LogsDialog.vue'
 import ServerDownOverlay from 'src/components/ServerDownOverlay.vue'
 import { serverHealth } from 'src/services/serverHealth'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const serverDown = computed(() => serverHealth.isAlive.value === false)
 const isWorkspaceRoute = computed(() => route.path === '/devices')
+const logsDialogOpen = ref(false)
 
 onMounted(() => {
   serverHealth.start()

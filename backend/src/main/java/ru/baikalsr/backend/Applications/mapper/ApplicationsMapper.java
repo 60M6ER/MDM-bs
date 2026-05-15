@@ -31,7 +31,7 @@ public class ApplicationsMapper {
     /**
      * Преобразует сущность приложения в полное детальное представление.
      */
-    public ApplicationDetailsDto toDetails(ArtifactApp src) {
+    public ApplicationDetailsDto toDetails(ArtifactApp src, boolean canReset) {
         if (src == null) return null;
         return new ApplicationDetailsDto(
                 src.getId(),
@@ -39,7 +39,8 @@ public class ApplicationsMapper {
                 src.getName(),
                 src.getPackageName(),
                 src.isActive(),
-                src.getCreatedAt()
+                src.getCreatedAt(),
+                canReset
         );
     }
 

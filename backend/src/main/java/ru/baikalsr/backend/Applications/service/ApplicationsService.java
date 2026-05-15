@@ -4,6 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,8 @@ import ru.baikalsr.backend.Applications.mapper.ArtifactReleaseMapper;
 import ru.baikalsr.backend.Applications.repository.ArtifactAppRepository;
 import ru.baikalsr.backend.Applications.repository.ArtifactCurrentReleaseRepository;
 import ru.baikalsr.backend.Applications.repository.ArtifactReleaseRepository;
+import ru.baikalsr.backend.Applications.service.storage.ArtifactStorageService;
+import ru.baikalsr.backend.Security.property.AdminProperty;
 import ru.baikalsr.backend.Setting.dto.PublicBasicUrlCfg;
 import ru.baikalsr.backend.Setting.enums.SettingGroup;
 import ru.baikalsr.backend.Setting.service.SettingsService;
@@ -46,7 +50,9 @@ public class ApplicationsService {
     private final ArtifactCurrentReleaseRepository artifactCurrentReleaseRepository;
     private final ApplicationsMapper applicationsMapper;
     private final ArtifactReleaseMapper artifactReleaseMapper;
+    private final ArtifactStorageService artifactStorageService;
     private final SettingsService settingsService;
+    private final AdminProperty adminProperty;
     private final EntityManager entityManager;
 
     /**
@@ -90,7 +96,7 @@ public class ApplicationsService {
     public ApplicationDetailsDto getDetails(Long id) {
         ArtifactApp app = artifactAppRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_NOT_FOUND"));
-        return applicationsMapper.toDetails(app);
+        return applicationsMapper.toDetails(app, isCurrentUserConfiguredAdmin());
     }
 
     /**
@@ -124,7 +130,7 @@ public class ApplicationsService {
         }
 
         ArtifactApp saved = artifactAppRepository.save(applicationsMapper.fromCreateRequest(request));
-        return applicationsMapper.toDetails(saved);
+        return applicationsMapper.toDetails(saved, isCurrentUserConfiguredAdmin());
     }
 
     /**
@@ -145,6 +151,50 @@ public class ApplicationsService {
 
         artifactAppRepository.delete(app);
         log.info("Deleted application id={}, key={}", app.getId(), app.getKey());
+    }
+
+    @Transactional
+    public void resetApplication(Long id) {
+        ArtifactApp app = artifactAppRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_NOT_FOUND"));
+
+        if (!isCurrentUserConfiguredAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "APPLICATION_RESET_FORBIDDEN");
+        }
+
+        var releases = artifactReleaseRepository.findByApp_IdOrderByVersionCodeDesc(app.getId());
+        for (ArtifactRelease release : releases) {
+            if (StringUtils.hasText(release.getStoragePath()) && !"__pending__".equals(release.getStoragePath())) {
+                artifactStorageService.delete(release.getStoragePath());
+            }
+        }
+
+        artifactCurrentReleaseRepository.findByAppId(app.getId()).ifPresent(currentRelease -> {
+            app.setCurrentRelease(null);
+            if (currentRelease.getRelease() != null) {
+                currentRelease.getRelease().setCurrentAssignment(null);
+            }
+            artifactCurrentReleaseRepository.delete(currentRelease);
+        });
+        artifactCurrentReleaseRepository.flush();
+
+        if (!releases.isEmpty()) {
+            for (ArtifactRelease release : releases) {
+                release.setCurrentAssignment(null);
+                artifactReleaseRepository.delete(release);
+            }
+            artifactReleaseRepository.flush();
+        }
+
+        entityManager.clear();
+
+        ArtifactApp resetApp = artifactAppRepository.findById(app.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "APPLICATION_NOT_FOUND"));
+        resetApp.setPackageName("");
+        resetApp.setActive(false);
+        artifactAppRepository.saveAndFlush(resetApp);
+
+        log.warn("Application reset id={}, key={}, releasesDeleted={}", resetApp.getId(), resetApp.getKey(), releases.size());
     }
 
     /**
@@ -372,5 +422,19 @@ public class ApplicationsService {
         String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         String normalizedPath = relativePath.startsWith("/") ? relativePath : "/" + relativePath;
         return normalizedBase + normalizedPath;
+    }
+
+    private boolean isCurrentUserConfiguredAdmin() {
+        String configuredAdmin = adminProperty.getUsername();
+        if (!StringUtils.hasText(configuredAdmin)) {
+            return false;
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !StringUtils.hasText(authentication.getName())) {
+            return false;
+        }
+
+        return configuredAdmin.trim().equalsIgnoreCase(authentication.getName().trim());
     }
 }

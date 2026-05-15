@@ -139,6 +139,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { notifyApiError } from 'src/services/apiErrors.js'
 import { apiClient } from 'src/services/apiClient.js'
 
 const props = defineProps({
@@ -219,10 +220,6 @@ function buildDownloadUrl(releaseId) {
   return `/api/v1/applications/releases/${releaseId}/file`
 }
 
-function getErrorMessage(err) {
-  return err?.response?.data?.message || err?.message || 'Произошла ошибка при загрузке релиза'
-}
-
 function isApkFile(file) {
   if (!file) return false
   const name = String(file.name || '').toLowerCase()
@@ -268,7 +265,7 @@ async function uploadFile(file) {
     emit('uploaded')
     $q.notify({ type: 'positive', message: 'Релиз загружен' })
   } catch (err) {
-    $q.notify({ type: 'negative', message: getErrorMessage(err) })
+    notifyApiError($q, err, 'Произошла ошибка при загрузке релиза')
   } finally {
     uploading.value = false
   }

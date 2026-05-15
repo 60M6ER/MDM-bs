@@ -32,7 +32,7 @@
             <div class="fit">
               <application-releases-pane
                 v-if="selectedId"
-                :key="`app-releases-${selectedId}`"
+                :key="`app-releases-${selectedId}-${refreshStamp}`"
                 class="fit"
                 :application-id="selectedId"
                 :current-release-id="currentReleaseId"
